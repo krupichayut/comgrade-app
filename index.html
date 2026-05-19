@@ -32,7 +32,7 @@
                             600: '#4079a8',
                             700: '#346188',
                             800: '#2d5272',
-                            900: '#1a5276', // Original Primary
+                            900: '#1a5276',
                         },
                         accent: '#f39c12',
                     }
@@ -42,7 +42,6 @@
     </script>
     
     <style>
-        /* Custom scrollbar and minor tweaks not covered by Tailwind utilities */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -55,7 +54,6 @@
             font-weight: 600; 
         }
         
-        /* Hide arrows in number input */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { 
             -webkit-appearance: none; 
@@ -68,7 +66,7 @@
 <!-- Toast Container -->
 <div id="toastContainer" class="fixed top-20 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-<!-- Confirm Modal (Replaces window.confirm) -->
+<!-- Confirm Modal -->
 <div id="confirmModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-[100] opacity-0 transition-opacity duration-300">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300" id="confirmBox">
         <div class="flex items-center gap-3 mb-4 text-red-600">
@@ -78,7 +76,34 @@
         <p class="text-slate-600 mb-6" id="confirmMessage">คุณแน่ใจหรือไม่ว่าต้องการดำเนินการนี้?</p>
         <div class="flex justify-end gap-3">
             <button onclick="closeConfirm()" class="px-4 py-2 rounded-lg font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">ยกเลิก</button>
-            <button id="confirmBtn" class="px-4 py-2 rounded-lg font-medium text-white bg-red-600 hover:bg-red-700 transition-colors shadow-sm shadow-red-200">ยืนยันลบ</button>
+            <button id="confirmBtn" class="px-4 py-2 rounded-lg font-medium text-white bg-red-600 hover:bg-red-700 transition-colors shadow-sm shadow-red-200">ยืนยัน</button>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Classes Modal -->
+<div id="classManageModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300" id="classManageBox">
+        <div class="flex justify-between items-center mb-5">
+            <h3 class="text-xl font-display font-semibold text-primary-900 flex items-center gap-2">
+                <i class="ph-fill ph-chalkboard"></i> จัดการชั้นเรียน
+            </h3>
+            <button onclick="closeModal('classManageModal')" class="text-slate-400 hover:text-slate-600 transition-colors"><i class="ph ph-x text-xl"></i></button>
+        </div>
+        
+        <div class="mb-5 flex gap-2">
+            <input type="text" id="new_class_input" placeholder="พิมพ์ชื่อชั้นเรียนใหม่ เช่น ม.1/1" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all">
+            <button onclick="addClass()" class="px-4 py-2 rounded-lg font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors shadow-sm flex items-center gap-2 whitespace-nowrap">
+                <i class="ph ph-plus"></i> เพิ่ม
+            </button>
+        </div>
+
+        <div class="flex-grow overflow-y-auto mb-4 border border-slate-200 rounded-lg bg-slate-50 p-2 min-h-[200px]" id="classManageList">
+            <!-- Data injected via JS -->
+        </div>
+        
+        <div class="flex justify-end border-t border-slate-100 pt-4">
+            <button onclick="closeModal('classManageModal')" class="px-6 py-2 rounded-lg font-medium text-white bg-slate-800 hover:bg-slate-900 transition-colors shadow-sm">เสร็จสิ้น</button>
         </div>
     </div>
 </div>
@@ -108,12 +133,7 @@
             <div>
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">ชั้นเรียน</label>
                 <select id="sm_class" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all bg-white">
-                    <option>ป.1/1</option><option>ป.1/2</option>
-                    <option>ป.2/1</option><option>ป.2/2</option>
-                    <option>ป.3/1</option><option>ป.3/2</option>
-                    <option>ป.4/1</option><option>ป.4/2</option>
-                    <option>ป.5/1</option><option>ป.5/2</option>
-                    <option>ป.6/1</option><option>ป.6/2</option>
+                    <!-- Classes loaded via JS -->
                 </select>
             </div>
             <div>
@@ -154,13 +174,7 @@
             <div>
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">ชั้นเรียน</label>
                 <select id="hw_class" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all bg-white">
-                    <option>ทุกชั้น</option>
-                    <option>ป.1/1</option><option>ป.1/2</option>
-                    <option>ป.2/1</option><option>ป.2/2</option>
-                    <option>ป.3/1</option><option>ป.3/2</option>
-                    <option>ป.4/1</option><option>ป.4/2</option>
-                    <option>ป.5/1</option><option>ป.5/2</option>
-                    <option>ป.6/1</option><option>ป.6/2</option>
+                    <!-- Loaded via JS -->
                 </select>
             </div>
             <div>
@@ -206,7 +220,7 @@
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300" id="bulkImportBox">
         <div class="flex justify-between items-center mb-5">
             <h3 class="text-xl font-display font-semibold text-primary-900 flex items-center gap-2">
-                <i class="ph-fill ph-list-plus"></i> นำเข้ารายชื่อนักเรียน (ทีละห้อง)
+                <i class="ph-fill ph-list-plus"></i> นำเข้ารายชื่อนักเรียน
             </h3>
             <button onclick="closeModal('bulkImportModal')" class="text-slate-400 hover:text-slate-600 transition-colors"><i class="ph ph-x text-xl"></i></button>
         </div>
@@ -214,24 +228,19 @@
         <div class="mb-4">
             <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">เลือกชั้นเรียน</label>
             <select id="bi_class" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all bg-white">
-                <option>ป.1/1</option><option>ป.1/2</option>
-                <option>ป.2/1</option><option>ป.2/2</option>
-                <option>ป.3/1</option><option>ป.3/2</option>
-                <option>ป.4/1</option><option>ป.4/2</option>
-                <option>ป.5/1</option><option>ป.5/2</option>
-                <option>ป.6/1</option><option>ป.6/2</option>
+                <!-- Loaded via JS -->
             </select>
         </div>
         
         <div class="mb-4 flex-grow flex flex-col min-h-[300px]">
             <label class="block text-xs font-semibold text-slate-500 uppercase mb-1 flex justify-between">
                 <span>รายชื่อนักเรียน (1 คน ต่อ 1 บรรทัด)</span>
-                <span class="text-primary-600 lowercase font-normal">คัดลอกจาก Excel มาวางได้เลย</span>
+                <span class="text-primary-600 lowercase font-normal">คัดลอกจาก Excel มาวางได้</span>
             </label>
-            <textarea id="bi_names" placeholder="ตัวอย่างการวางข้อมูล:&#10;1. ด.ช. สมชาย ใจดี&#10;2 ด.ญ. สมหญิง รักเรียน&#10;เด็กชาย มานะ อดทน" class="w-full flex-grow px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all resize-none font-sans text-sm leading-relaxed"></textarea>
+            <textarea id="bi_names" placeholder="ตัวอย่าง:&#10;1. ด.ช. สมชาย ใจดี&#10;2 ด.ญ. สมหญิง รักเรียน" class="w-full flex-grow px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all resize-none font-sans text-sm leading-relaxed"></textarea>
             <div class="text-xs text-slate-500 mt-2 space-y-1">
-                <p><i class="ph-fill ph-info text-primary-500"></i> ระบบจะดึง <b>เลขที่</b> จากตัวเลขหน้าสุดของบรรทัด (ถ้าไม่มีจะรันต่อให้อัตโนมัติ)</p>
-                <p><i class="ph-fill ph-info text-primary-500"></i> ระบบจะพิจารณา <b>เพศ</b> จากคำนำหน้า เช่น ด.ช., ด.ญ., เด็กชาย, นางสาว</p>
+                <p><i class="ph-fill ph-info text-primary-500"></i> ระบบจะดึง <b>เลขที่</b> จากตัวเลขหน้าสุดของบรรทัดให้</p>
+                <p><i class="ph-fill ph-info text-primary-500"></i> ระบบจะพิจารณา <b>เพศ</b> จากคำนำหน้า (ด.ช., ด.ญ., เด็กชาย...)</p>
             </div>
         </div>
         
@@ -254,7 +263,7 @@
                 </div>
                 <div>
                     <h1 class="font-display text-xl sm:text-2xl font-semibold tracking-tight leading-tight">ระบบเช็คชื่อวิชาคอมพิวเตอร์</h1>
-                    <p class="text-sm text-primary-100 opacity-90 font-light">โรงเรียนประถมศึกษา ป.1–ป.6</p>
+                    <p class="text-sm text-primary-100 opacity-90 font-light">โปรแกรมจัดการข้อมูลนักเรียน</p>
                 </div>
             </div>
             <div class="text-right hidden sm:block">
@@ -278,7 +287,7 @@
                 <i class="ph-fill ph-chart-bar text-lg"></i> คะแนน
             </button>
             <button onclick="switchTab('homework', this)" class="nav-btn px-5 py-2.5 text-sm font-medium rounded-t-xl transition-colors text-primary-100 hover:bg-white/10 hover:text-white flex items-center gap-2 whitespace-nowrap">
-                <i class="ph-fill ph-clipboard-text text-lg"></i> งาน/การบ้าน
+                <i class="ph-fill ph-clipboard-text text-lg"></i> งาน/กิจกรรม
             </button>
             <button onclick="switchTab('report', this)" class="nav-btn px-5 py-2.5 text-sm font-medium rounded-t-xl transition-colors text-primary-100 hover:bg-white/10 hover:text-white flex items-center gap-2 whitespace-nowrap">
                 <i class="ph-fill ph-trend-up text-lg"></i> รายงาน
@@ -291,24 +300,25 @@
 
 <!-- PANEL: DASHBOARD -->
 <div id="panel-dashboard" class="panel-content block animate-fade-in">
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
         <h2 class="text-2xl font-display font-semibold text-primary-900 flex items-center gap-2 border-l-4 border-accent pl-3">
             ภาพรวมระบบ
         </h2>
-        <div class="flex gap-2 print:hidden">
-            <button onclick="exportData()" class="px-3 py-1.5 text-sm rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 transition flex items-center gap-2">
-                <i class="ph ph-export"></i> ส่งออกข้อมูล
+        <div class="flex gap-2 print:hidden flex-wrap">
+            <button onclick="openClassManageModal()" class="px-3 py-1.5 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition flex items-center gap-2 shadow-sm font-medium">
+                <i class="ph-bold ph-chalkboard text-primary-600"></i> จัดการชั้นเรียน
             </button>
-            <label class="px-3 py-1.5 text-sm rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 transition flex items-center gap-2 cursor-pointer">
+            <button onclick="exportData()" class="px-3 py-1.5 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition flex items-center gap-2 shadow-sm">
+                <i class="ph ph-export"></i> ส่งออก
+            </button>
+            <label class="px-3 py-1.5 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition flex items-center gap-2 shadow-sm cursor-pointer">
                 <i class="ph ph-import"></i> นำเข้า
                 <input type="file" accept=".json" class="hidden" onchange="importData(event)">
             </label>
         </div>
     </div>
     
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8" id="dashStats">
-        <!-- Stats injected via JS -->
-    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8" id="dashStats"></div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Today Attendance -->
@@ -318,9 +328,7 @@
                     <i class="ph-fill ph-calendar-check text-xl text-primary-500"></i> การเช็คชื่อวันนี้
                 </h3>
             </div>
-            <div class="p-5 flex-grow" id="dashTodayAtt">
-                <!-- Content -->
-            </div>
+            <div class="p-5 flex-grow" id="dashTodayAtt"></div>
         </div>
 
         <!-- Upcoming Homework -->
@@ -330,9 +338,7 @@
                     <i class="ph-fill ph-bell-ringing text-xl text-accent"></i> งานที่ใกล้ถึงกำหนด
                 </h3>
             </div>
-            <div class="p-5 flex-grow" id="dashUpcomingHw">
-                <!-- Content -->
-            </div>
+            <div class="p-5 flex-grow" id="dashUpcomingHw"></div>
         </div>
     </div>
 </div>
@@ -343,28 +349,23 @@
         <div class="flex flex-wrap items-end gap-4">
             <div class="w-full sm:w-auto flex-grow sm:flex-grow-0">
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">วันที่</label>
-                <input type="date" id="att_date" onchange="renderAttendanceGrid()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none">
+                <input type="date" id="att_date" onchange="renderAttendanceGrid()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none bg-white">
             </div>
             <div class="w-full sm:w-auto">
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">ชั้นเรียน</label>
-                <select id="att_class" onchange="renderAttendanceGrid()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none bg-white min-w-[120px]">
-                    <option>ป.1/1</option><option>ป.1/2</option>
-                    <option>ป.2/1</option><option>ป.2/2</option>
-                    <option>ป.3/1</option><option>ป.3/2</option>
-                    <option>ป.4/1</option><option>ป.4/2</option>
-                    <option>ป.5/1</option><option>ป.5/2</option>
-                    <option>ป.6/1</option><option>ป.6/2</option>
-                </select>
+                <select id="att_class" onchange="renderAttendanceGrid()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none bg-white min-w-[120px]"></select>
             </div>
             <div class="w-full sm:w-auto">
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">คาบเรียน</label>
                 <select id="att_period" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none bg-white min-w-[180px]">
-                    <option value="1">คาบที่ 1 (08:30-09:30)</option>
-                    <option value="2">คาบที่ 2 (09:30-10:30)</option>
-                    <option value="3">คาบที่ 3 (10:30-11:30)</option>
-                    <option value="4">คาบที่ 4 (12:30-13:30)</option>
-                    <option value="5">คาบที่ 5 (13:30-14:30)</option>
-                    <option value="6">คาบที่ 6 (14:30-15:30)</option>
+                    <option value="1">คาบที่ 1</option>
+                    <option value="2">คาบที่ 2</option>
+                    <option value="3">คาบที่ 3</option>
+                    <option value="4">คาบที่ 4</option>
+                    <option value="5">คาบที่ 5</option>
+                    <option value="6">คาบที่ 6</option>
+                    <option value="7">คาบที่ 7</option>
+                    <option value="8">คาบที่ 8</option>
                 </select>
             </div>
             <div class="w-full sm:w-auto flex flex-wrap gap-2 pt-2 sm:pt-0 sm:ml-auto">
@@ -374,7 +375,7 @@
                 <button onclick="saveAttendance()" class="px-4 py-2 rounded-lg font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors shadow-sm flex items-center gap-2">
                     <i class="ph ph-floppy-disk"></i> บันทึกเช็คชื่อ
                 </button>
-                <button onclick="window.print()" class="px-3 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-2">
+                <button onclick="window.print()" class="px-3 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-2 bg-white">
                     <i class="ph ph-printer"></i>
                 </button>
             </div>
@@ -384,48 +385,27 @@
     <!-- Quick Stats -->
     <div id="attQuickStats" class="flex flex-wrap gap-3 mb-4 print:mb-2"></div>
 
-    <!-- Legend -->
-    <div class="flex flex-wrap gap-4 mb-6 text-sm text-slate-600">
-        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>มาเรียน</span>
-        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>ขาดเรียน</span>
-        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>มาสาย</span>
-        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>ลา</span>
-    </div>
-
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3" id="attGrid">
-        <!-- Grid injected via JS -->
-    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3" id="attGrid"></div>
 </div>
 
 <!-- PANEL: STUDENTS -->
 <div id="panel-students" class="panel-content hidden animate-fade-in">
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div class="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="p-5 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <h2 class="text-xl font-display font-semibold text-primary-900 flex items-center gap-2">
                 <i class="ph-fill ph-users-three"></i> จัดการนักเรียน
             </h2>
             <div class="flex flex-wrap items-center gap-3">
-                <div class="relative">
+                <div class="relative w-full sm:w-auto">
                     <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                     <input type="text" id="studentSearch" oninput="renderStudentTable()" placeholder="ค้นหาชื่อ, เลขที่..." class="pl-9 pr-3 py-2 w-full sm:w-48 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm">
                 </div>
-                <select id="studentClassFilter" onchange="renderStudentTable()" class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm bg-white">
-                    <option value="">ทุกชั้นเรียน</option>
-                    <option>ป.1/1</option><option>ป.1/2</option>
-                    <option>ป.2/1</option><option>ป.2/2</option>
-                    <option>ป.3/1</option><option>ป.3/2</option>
-                    <option>ป.4/1</option><option>ป.4/2</option>
-                    <option>ป.5/1</option><option>ป.5/2</option>
-                    <option>ป.6/1</option><option>ป.6/2</option>
-                </select>
-                <button onclick="openBulkImport()" class="px-4 py-2 rounded-lg text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200 transition-colors shadow-sm flex items-center gap-2 hidden sm:flex">
+                <select id="studentClassFilter" onchange="renderStudentTable()" class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm bg-white"></select>
+                <button onclick="openBulkImport()" class="px-4 py-2 rounded-lg text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200 transition-colors shadow-sm flex items-center justify-center gap-2 w-full sm:w-auto">
                     <i class="ph ph-list-plus"></i> นำเข้าทีละห้อง
                 </button>
-                <button onclick="openAddStudent()" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors shadow-sm flex items-center gap-2">
+                <button onclick="openAddStudent()" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors shadow-sm flex items-center justify-center gap-2 w-full sm:w-auto">
                     <i class="ph ph-plus"></i> เพิ่มนักเรียน
-                </button>
-                <button onclick="confirmImportSample()" class="px-3 py-2 rounded-lg text-sm border border-slate-300 text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-2 hidden md:flex">
-                    <i class="ph ph-download-simple"></i> ข้อมูลตัวอย่าง
                 </button>
             </div>
         </div>
@@ -444,9 +424,7 @@
                         <th class="px-4 py-3 font-semibold border-b text-center">จัดการ</th>
                     </tr>
                 </thead>
-                <tbody id="studentTableBody" class="divide-y divide-slate-100">
-                    <!-- Data injected via JS -->
-                </tbody>
+                <tbody id="studentTableBody" class="divide-y divide-slate-100"></tbody>
             </table>
         </div>
     </div>
@@ -465,14 +443,7 @@
             <div class="flex flex-wrap items-end gap-4">
                 <div class="w-full sm:w-auto">
                     <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">ชั้นเรียน</label>
-                    <select id="sc_class" onchange="updateHwSelect(); renderScoreTable()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none bg-white min-w-[120px]">
-                        <option>ป.1/1</option><option>ป.1/2</option>
-                        <option>ป.2/1</option><option>ป.2/2</option>
-                        <option>ป.3/1</option><option>ป.3/2</option>
-                        <option>ป.4/1</option><option>ป.4/2</option>
-                        <option>ป.5/1</option><option>ป.5/2</option>
-                        <option>ป.6/1</option><option>ป.6/2</option>
-                    </select>
+                    <select id="sc_class" onchange="updateHwSelect(); renderScoreTable()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none bg-white min-w-[120px]"></select>
                 </div>
                 <div class="w-full sm:w-auto flex-grow sm:max-w-md">
                     <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">งาน/กิจกรรม</label>
@@ -501,9 +472,7 @@
                             <th class="px-4 py-3 font-semibold border-b w-24 text-center">ระดับเกณฑ์</th>
                         </tr>
                     </thead>
-                    <tbody id="scoreTableBody" class="divide-y divide-slate-100">
-                        <!-- Content -->
-                    </tbody>
+                    <tbody id="scoreTableBody" class="divide-y divide-slate-100"></tbody>
                 </table>
             </div>
         </div>
@@ -515,18 +484,10 @@
             <div class="flex flex-wrap items-end gap-4">
                 <div class="w-full sm:w-auto">
                     <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">ชั้นเรียน</label>
-                    <select id="sum_class" onchange="renderScoreSummary()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none bg-white min-w-[150px]">
-                        <option value="">สรุปทุกชั้นเรียน</option>
-                        <option>ป.1/1</option><option>ป.1/2</option>
-                        <option>ป.2/1</option><option>ป.2/2</option>
-                        <option>ป.3/1</option><option>ป.3/2</option>
-                        <option>ป.4/1</option><option>ป.4/2</option>
-                        <option>ป.5/1</option><option>ป.5/2</option>
-                        <option>ป.6/1</option><option>ป.6/2</option>
-                    </select>
+                    <select id="sum_class" onchange="renderScoreSummary()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none bg-white min-w-[150px]"></select>
                 </div>
-                <button onclick="renderScoreSummary()" class="px-4 py-2 rounded-lg font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 transition-colors border border-primary-200 flex items-center gap-2">
-                    <i class="ph ph-arrows-clockwise"></i> อัปเดตข้อมูล
+                <button onclick="renderScoreSummary()" class="px-4 py-2 rounded-lg font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 transition-colors border border-primary-200 flex items-center gap-2 bg-white">
+                    <i class="ph ph-arrows-clockwise"></i> อัปเดต
                 </button>
             </div>
         </div>
@@ -549,15 +510,7 @@
             <div class="flex flex-wrap gap-4">
                 <div class="w-full sm:w-48">
                     <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">กรองตามชั้น</label>
-                    <select id="hwClassFilter" onchange="renderHomeworkList()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none bg-white">
-                        <option value="">ทุกชั้นเรียน</option>
-                        <option>ป.1/1</option><option>ป.1/2</option>
-                        <option>ป.2/1</option><option>ป.2/2</option>
-                        <option>ป.3/1</option><option>ป.3/2</option>
-                        <option>ป.4/1</option><option>ป.4/2</option>
-                        <option>ป.5/1</option><option>ป.5/2</option>
-                        <option>ป.6/1</option><option>ป.6/2</option>
-                    </select>
+                    <select id="hwClassFilter" onchange="renderHomeworkList()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none bg-white"></select>
                 </div>
                 <div class="w-full sm:w-48">
                     <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">ประเภทงาน</label>
@@ -573,9 +526,7 @@
             </div>
         </div>
         <div class="p-5">
-            <div id="hwList" class="space-y-3">
-                <!-- Data injected via JS -->
-            </div>
+            <div id="hwList" class="space-y-3"></div>
         </div>
     </div>
 </div>
@@ -594,29 +545,21 @@
             <div class="flex flex-wrap items-end gap-4">
                 <div class="w-full sm:w-auto">
                     <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">ตั้งแต่วันที่</label>
-                    <input type="date" id="rep_from" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm">
+                    <input type="date" id="rep_from" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm bg-white">
                 </div>
                 <div class="w-full sm:w-auto">
                     <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">ถึงวันที่</label>
-                    <input type="date" id="rep_to" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm">
+                    <input type="date" id="rep_to" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm bg-white">
                 </div>
                 <div class="w-full sm:w-auto">
                     <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">ชั้นเรียน</label>
-                    <select id="rep_class" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm bg-white min-w-[120px]">
-                        <option value="">ทุกชั้นเรียน</option>
-                        <option>ป.1/1</option><option>ป.1/2</option>
-                        <option>ป.2/1</option><option>ป.2/2</option>
-                        <option>ป.3/1</option><option>ป.3/2</option>
-                        <option>ป.4/1</option><option>ป.4/2</option>
-                        <option>ป.5/1</option><option>ป.5/2</option>
-                        <option>ป.6/1</option><option>ป.6/2</option>
-                    </select>
+                    <select id="rep_class" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm bg-white min-w-[120px]"></select>
                 </div>
                 <div class="w-full sm:w-auto flex gap-2 pt-2 sm:pt-0 sm:ml-auto">
                     <button onclick="renderReport()" class="flex-1 sm:flex-none px-4 py-2 rounded-lg font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors shadow-sm flex justify-center items-center gap-2">
                         <i class="ph ph-chart-pie-slice"></i> สร้างรายงาน
                     </button>
-                    <button onclick="window.print()" class="px-3 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 transition-colors flex items-center justify-center">
+                    <button onclick="window.print()" class="px-3 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 transition-colors flex items-center justify-center bg-white">
                         <i class="ph ph-printer"></i>
                     </button>
                 </div>
@@ -625,12 +568,10 @@
         <div id="reportContent"></div>
     </div>
 
-    <!-- Report Class Tab -->
     <div id="tab-report-class" class="inner-content-report hidden">
         <div id="classReportContent"></div>
     </div>
 
-    <!-- Report Student Tab -->
     <div id="tab-report-student" class="inner-content-report hidden">
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6 print:hidden">
             <div class="relative max-w-md">
@@ -643,7 +584,7 @@
             <div class="lg:col-span-1" id="repStudentDetail">
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-10 text-center text-slate-400 flex flex-col items-center justify-center h-full min-h-[300px]">
                     <i class="ph-fill ph-user-focus text-6xl text-slate-200 mb-3"></i>
-                    <p>คลิก "รายละเอียด" ท้ายชื่อนักเรียน<br>เพื่อดูข้อมูลเชิงลึก</p>
+                    <p>คลิก "ดูข้อมูล" ท้ายชื่อนักเรียน<br>เพื่อดูข้อมูลเชิงลึก</p>
                 </div>
             </div>
         </div>
@@ -652,35 +593,117 @@
 
 </main>
 
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+window.initCloudStorage = async function(onComplete) {
+    try {
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'computer-attendance';
+        const configStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+        if (!configStr) { onComplete(false); return; }
+        
+        const app = initializeApp(JSON.parse(configStr));
+        const auth = getAuth(app);
+        const firestore = getFirestore(app);
+
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+        else await signInAnonymously(auth);
+        
+        const userId = auth.currentUser?.uid;
+        if (!userId) { onComplete(false); return; }
+
+        const docRef = doc(firestore, 'artifacts', appId, 'users', userId, 'appData', 'mainState');
+        window._cloudDocRef = docRef;
+        window._cloudSetDoc = setDoc;
+        
+        const snapshot = await getDoc(docRef);
+        if (snapshot.exists()) {
+            window._db = snapshot.data();
+            if(window.syncDbFromCloud) window.syncDbFromCloud();
+        } else {
+            const localData = localStorage.getItem('computer_att_db_v2') || localStorage.getItem('computer_att_db');
+            if (localData) { window._db = JSON.parse(localData); if(window.syncDbFromCloud) window.syncDbFromCloud(); }
+            if(window.saveDB) window.saveDB();
+        }
+
+        onSnapshot(docRef, (snap) => {
+            if (snap.exists()) {
+                window._db = snap.data();
+                if(window.syncDbFromCloud) window.syncDbFromCloud();
+            }
+        });
+        
+        if(window.toast) window.toast("เชื่อมต่อ Cloud สำเร็จ ซิงค์ข้อมูลเรียลไทม์ ☁️", "success");
+        onComplete(true);
+    } catch(e) {
+        if(window.toast) window.toast("ทำงานในโหมดออฟไลน์", "error");
+        onComplete(false);
+    }
+}
+</script>
+
 <script>
 // ============ DATA STORE ============
+const defaultClasses = ['ป.1/1','ป.1/2','ป.2/1','ป.2/2','ป.3/1','ป.3/2','ป.4/1','ป.4/2','ป.5/1','ป.5/2','ป.6/1','ป.6/2'];
+
 let db = {
+    classes: [...defaultClasses],
     students: [],
-    attendance: {},  // key: "date_class_period" => [{studentId, status}]
-    scores: {},      // key: "hwId_studentId" => score
+    attendance: {},
+    scores: {},
     homework: [],
     idCounter: 1,
     hwCounter: 1
 };
 
-function saveDB() {
-    try { localStorage.setItem('computer_att_db_v2', JSON.stringify(db)); } catch(e){ console.error("Save failed", e); }
+function ensureDBStructure() {
+    if (!db.classes || db.classes.length === 0 && !db.hasOwnProperty('classes')) db.classes = [...defaultClasses];
+    if (!db.students) db.students = [];
+    if (!db.attendance) db.attendance = {};
+    if (!db.scores) db.scores = {};
+    if (!db.homework) db.homework = [];
+    if (!db.idCounter) db.idCounter = 1;
+    if (!db.hwCounter) db.hwCounter = 1;
 }
+
+function syncDbFromCloud() {
+    if (window._db) {
+        db = window._db;
+        ensureDBStructure();
+        updateClassSelects();
+        
+        // Render UI
+        renderDashboard();
+        renderAttendanceGrid();
+        renderStudentTable();
+        renderHomeworkList();
+        updateHwSelect();
+        
+        const scHw = document.getElementById('sc_hw');
+        if (scHw && scHw.value) renderScoreTable();
+    }
+}
+window.syncDbFromCloud = syncDbFromCloud;
+
+function saveDB() {
+    try { 
+        if (window._cloudDocRef && window._cloudSetDoc) {
+            window._cloudSetDoc(window._cloudDocRef, db).catch(e => console.error("Cloud save failed", e));
+        } else {
+            localStorage.setItem('computer_att_db_v2', JSON.stringify(db)); 
+        }
+    } catch(e){}
+}
+window.saveDB = saveDB;
 
 function loadDB() {
     try {
         const d = localStorage.getItem('computer_att_db_v2') || localStorage.getItem('computer_att_db');
-        if (d) {
-            db = JSON.parse(d);
-            // Schema fallback protection
-            if (!db.students) db.students = [];
-            if (!db.attendance) db.attendance = {};
-            if (!db.scores) db.scores = {};
-            if (!db.homework) db.homework = [];
-            if (!db.idCounter) db.idCounter = 1;
-            if (!db.hwCounter) db.hwCounter = 1;
-        }
-    } catch(e){ console.error("Load failed", e); }
+        if (d) { db = JSON.parse(d); }
+        ensureDBStructure();
+    } catch(e){}
 }
 
 // ============ UTILS ============
@@ -693,26 +716,126 @@ function formatDate(dateStr) {
 
 function escapeHTML(str) {
     if(!str) return '';
-    return str.replace(/[&<>'"]/g, 
-        tag => ({
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            "'": '&#39;',
-            '"': '&quot;'
-        }[tag])
-    );
+    return str.replace(/[&<>'"]/g, tag => ({'&': '&amp;','<': '&lt;','>': '&gt;',"'": '&#39;','"': '&quot;'}[tag]));
+}
+
+// ============ CLASS MANAGEMENT (Dynamic Selects) ============
+function updateClassSelects() {
+    const cList = db.classes || [];
+    
+    // Helper to safely update select while keeping previous selection if possible
+    const updateSelect = (id, prependOptions = '') => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const prevVal = el.value;
+        const opts = cList.map(c => `<option value="${c}">${c}</option>`).join('');
+        el.innerHTML = prependOptions + opts;
+        
+        // If the old selected value is still in the new list (or is a default like ""), keep it
+        if (prevVal === "" || cList.includes(prevVal) || prevVal === "ทุกชั้น") {
+            el.value = prevVal;
+        }
+    };
+
+    updateSelect('sm_class');
+    updateSelect('hw_class', '<option value="ทุกชั้น">ทุกชั้น</option>');
+    updateSelect('bi_class');
+    updateSelect('att_class');
+    updateSelect('studentClassFilter', '<option value="">ทุกชั้นเรียน</option>');
+    updateSelect('sc_class');
+    updateSelect('sum_class', '<option value="">สรุปทุกชั้นเรียน</option>');
+    updateSelect('hwClassFilter', '<option value="">ทุกชั้นเรียน</option>');
+    updateSelect('rep_class', '<option value="">ทุกชั้นเรียน</option>');
+}
+
+function openClassManageModal() {
+    document.getElementById('new_class_input').value = '';
+    renderClassManageList();
+    openModal('classManageModal');
+}
+
+function renderClassManageList() {
+    const container = document.getElementById('classManageList');
+    if (!db.classes || db.classes.length === 0) {
+        container.innerHTML = '<div class="text-center text-slate-400 py-6 text-sm">ยังไม่มีชั้นเรียนในระบบ</div>';
+        return;
+    }
+    
+    container.innerHTML = db.classes.map(c => {
+        const studentCount = db.students.filter(s => s.cls === c).length;
+        return `
+        <div class="flex justify-between items-center p-3 bg-white rounded-md mb-2 border border-slate-200 shadow-sm">
+            <div class="font-semibold text-slate-700 flex items-center gap-2">
+                <i class="ph-fill ph-chalkboard-teacher text-primary-500"></i> ${c}
+                <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium ml-1">${studentCount} คน</span>
+            </div>
+            <button onclick="confirmDeleteClass('${c}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors" title="ลบชั้นเรียน">
+                <i class="ph-bold ph-trash"></i>
+            </button>
+        </div>`;
+    }).join('');
+}
+
+function addClass() {
+    const val = document.getElementById('new_class_input').value.trim();
+    if(!val) return;
+    if(db.classes.includes(val)) { toast('มีชั้นเรียนนี้อยู่แล้ว', 'error'); return; }
+    
+    db.classes.push(val);
+    // Sort classes naturally (e.g. ป.1/1 before ป.10/1)
+    db.classes.sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+    
+    saveDB();
+    updateClassSelects();
+    renderClassManageList();
+    document.getElementById('new_class_input').value = '';
+    toast(`เพิ่มชั้นเรียน ${val} เรียบร้อย`, 'success');
+}
+
+function confirmDeleteClass(className) {
+    const studentCount = db.students.filter(s => s.cls === className).length;
+    let warning = `คุณต้องการลบชั้นเรียน "${className}" ใช่หรือไม่?`;
+    if (studentCount > 0) {
+        warning += `\n⚠️ คำเตือน: มีนักเรียนอยู่ ${studentCount} คนในชั้นนี้ หากลบไป ข้อมูลนักเรียนจะยังอยู่แต่จะไม่เชื่อมโยงกับชั้นเรียนใดเลย`;
+    }
+    
+    showConfirm('ลบชั้นเรียน', warning, () => {
+        db.classes = db.classes.filter(c => c !== className);
+        saveDB();
+        updateClassSelects();
+        renderClassManageList();
+        
+        // Re-render other parts just in case
+        renderDashboard();
+        renderStudentTable();
+        
+        toast(`ลบชั้นเรียน ${className} เรียบร้อย`, 'info');
+    });
 }
 
 // ============ INIT ============
 function init() {
-    loadDB();
+    window.toast = toast;
+    
+    if (window.initCloudStorage) {
+        window.initCloudStorage((success) => {
+            if (!success) { loadDB(); ensureDBStructure(); }
+            continueInit();
+        });
+    } else {
+        loadDB();
+        ensureDBStructure();
+        continueInit();
+    }
+}
+
+function continueInit() {
+    updateClassSelects();
+    
     updateClock();
     setInterval(updateClock, 1000);
 
-    // Initial Date setups
     const today = new Date();
-    // Adjust for timezone offset to get correct local date string
     const offset = today.getTimezoneOffset() * 60000;
     const localISOTime = (new Date(today - offset)).toISOString().split('T')[0];
     
@@ -721,12 +844,9 @@ function init() {
 
     const threeWeeksAgo = new Date(today);
     threeWeeksAgo.setDate(threeWeeksAgo.getDate() - 21);
-    const localThreeWeeksAgo = (new Date(threeWeeksAgo - offset)).toISOString().split('T')[0];
-    
-    document.getElementById('rep_from').value = localThreeWeeksAgo;
+    document.getElementById('rep_from').value = (new Date(threeWeeksAgo - offset)).toISOString().split('T')[0];
     document.getElementById('rep_to').value = localISOTime;
 
-    // Initial renders
     renderDashboard();
     renderAttendanceGrid();
     renderStudentTable();
@@ -738,34 +858,19 @@ function updateClock() {
     const now = new Date();
     const days = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
     const months = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-    document.getElementById('headerDate').textContent = 
-        `วัน${days[now.getDay()]}ที่ ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()+543}`;
-    
-    // Format time HH:MM
-    document.getElementById('headerTime').textContent = 
-        now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+    document.getElementById('headerDate').textContent = `วัน${days[now.getDay()]}ที่ ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()+543}`;
+    document.getElementById('headerTime').textContent = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
 }
 
 // ============ NAVIGATION ============
 function switchTab(name, btn) {
-    document.querySelectorAll('.panel-content').forEach(p => {
-        p.classList.add('hidden');
-        p.classList.remove('block');
-    });
-    document.querySelectorAll('.nav-btn').forEach(t => {
-        t.classList.remove('bg-slate-50', 'text-primary-900', 'shadow-sm');
-        t.classList.add('text-primary-100');
-    });
+    document.querySelectorAll('.panel-content').forEach(p => { p.classList.add('hidden'); p.classList.remove('block'); });
+    document.querySelectorAll('.nav-btn').forEach(t => { t.classList.remove('bg-slate-50', 'text-primary-900', 'shadow-sm'); t.classList.add('text-primary-100'); });
     
     document.getElementById('panel-' + name).classList.remove('hidden');
     document.getElementById('panel-' + name).classList.add('block');
-    
-    if (btn) {
-        btn.classList.add('bg-slate-50', 'text-primary-900', 'shadow-sm');
-        btn.classList.remove('text-primary-100');
-    }
+    if (btn) { btn.classList.add('bg-slate-50', 'text-primary-900', 'shadow-sm'); btn.classList.remove('text-primary-100'); }
 
-    // Refresh data based on tab
     if (name === 'dashboard') renderDashboard();
     if (name === 'attendance') renderAttendanceGrid();
     if (name === 'students') renderStudentTable();
@@ -775,24 +880,14 @@ function switchTab(name, btn) {
 }
 
 function switchInnerTab(panelGroup, tabId, btn) {
-    // Hide all contents in this group
-    document.querySelectorAll('.inner-content-' + panelGroup).forEach(p => {
-        p.classList.add('hidden');
-        p.classList.remove('block');
-    });
-    // Remove active state from tabs
-    document.querySelectorAll('.inner-tab-' + panelGroup).forEach(t => {
-        t.classList.remove('tab-active');
-        t.classList.add('text-slate-500');
-    });
+    document.querySelectorAll('.inner-content-' + panelGroup).forEach(p => { p.classList.add('hidden'); p.classList.remove('block'); });
+    document.querySelectorAll('.inner-tab-' + panelGroup).forEach(t => { t.classList.remove('tab-active'); t.classList.add('text-slate-500'); });
     
-    // Show active
     document.getElementById('tab-' + tabId).classList.remove('hidden');
     document.getElementById('tab-' + tabId).classList.add('block');
     btn.classList.add('tab-active');
     btn.classList.remove('text-slate-500');
 
-    // Triggers
     if (tabId === 'report-class') renderClassReport();
     if (tabId === 'report-student') renderRepStudentList();
     if (tabId === 'score-summary') renderScoreSummary();
@@ -802,27 +897,17 @@ function switchInnerTab(panelGroup, tabId, btn) {
 function openModal(id) { 
     const m = document.getElementById(id);
     const box = m.children[0];
-    m.classList.remove('hidden');
-    m.classList.add('flex');
-    // Small delay for transition
-    setTimeout(() => {
-        m.classList.remove('opacity-0');
-        box.classList.remove('scale-95');
-    }, 10);
+    m.classList.remove('hidden'); m.classList.add('flex');
+    setTimeout(() => { m.classList.remove('opacity-0'); box.classList.remove('scale-95'); }, 10);
 }
 
 function closeModal(id) { 
     const m = document.getElementById(id);
     const box = m.children[0];
-    m.classList.add('opacity-0');
-    box.classList.add('scale-95');
-    setTimeout(() => {
-        m.classList.add('hidden');
-        m.classList.remove('flex');
-    }, 300);
+    m.classList.add('opacity-0'); box.classList.add('scale-95');
+    setTimeout(() => { m.classList.add('hidden'); m.classList.remove('flex'); }, 300);
 }
 
-// Custom Confirm System
 let confirmCallback = null;
 function showConfirm(title, message, callback) {
     document.getElementById('confirmTitle').innerText = title;
@@ -830,41 +915,22 @@ function showConfirm(title, message, callback) {
     confirmCallback = callback;
     openModal('confirmModal');
 }
-function closeConfirm() {
-    closeModal('confirmModal');
-    confirmCallback = null;
-}
+function closeConfirm() { closeModal('confirmModal'); confirmCallback = null; }
 document.getElementById('confirmBtn').addEventListener('click', () => {
     if(confirmCallback) confirmCallback();
     closeConfirm();
 });
 
-// Toast
 function toast(msg, type='success') {
     const t = document.createElement('div');
-    const colors = {
-        success: 'bg-green-600',
-        error: 'bg-red-600',
-        info: 'bg-primary-600'
-    };
-    const icons = {
-        success: '<i class="ph-fill ph-check-circle text-xl"></i>',
-        error: '<i class="ph-fill ph-warning-circle text-xl"></i>',
-        info: '<i class="ph-fill ph-info text-xl"></i>'
-    };
+    const colors = { success: 'bg-green-600', error: 'bg-red-600', info: 'bg-primary-600' };
+    const icons = { success: '<i class="ph-fill ph-check-circle text-xl"></i>', error: '<i class="ph-fill ph-warning-circle text-xl"></i>', info: '<i class="ph-fill ph-info text-xl"></i>' };
     
     t.className = `${colors[type]} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 transform transition-all duration-300 translate-x-full opacity-0`;
     t.innerHTML = `${icons[type]} <span class="font-medium text-sm">${escapeHTML(msg)}</span>`;
     
-    const container = document.getElementById('toastContainer');
-    container.appendChild(t);
-    
-    // Animate in
-    setTimeout(() => {
-        t.classList.remove('translate-x-full', 'opacity-0');
-    }, 10);
-    
-    // Remove after 3s
+    document.getElementById('toastContainer').appendChild(t);
+    setTimeout(() => { t.classList.remove('translate-x-full', 'opacity-0'); }, 10);
     setTimeout(() => {
         t.classList.add('opacity-0', '-translate-y-2');
         setTimeout(() => t.remove(), 300);
@@ -913,12 +979,14 @@ function saveStudent() {
     closeModal('studentModal');
     renderStudentTable();
     renderDashboard();
+    // Update manage classes stats if open
+    if(!document.getElementById('classManageModal').classList.contains('hidden')) renderClassManageList();
 }
 
 function confirmDeleteStudent(id) {
     const s = db.students.find(x => x.id === id);
     if(!s) return;
-    showConfirm('ลบนักเรียน', `ต้องการลบข้อมูลของ ${escapeHTML(s.name)} ใช่หรือไม่?\n(ข้อมูลการเช็คชื่อและคะแนนจะยังคงอยู่แต่ไม่แสดงชื่อ)`, () => {
+    showConfirm('ลบนักเรียน', `ต้องการลบข้อมูลของ ${escapeHTML(s.name)} ใช่หรือไม่?`, () => {
         db.students = db.students.filter(x => x.id !== id);
         saveDB();
         renderStudentTable();
@@ -930,8 +998,7 @@ function confirmDeleteStudent(id) {
 function getStudentStats(id) {
     let present=0, absent=0, late=0, leave=0;
     for (const key in db.attendance) {
-        const records = db.attendance[key];
-        const r = records.find(x => x.studentId === id);
+        const r = db.attendance[key].find(x => x.studentId === id);
         if (r) {
             if (r.status === 'present') present++;
             else if (r.status === 'absent') absent++;
@@ -950,18 +1017,16 @@ function renderStudentTable() {
         (s.name.toLowerCase().includes(search) || String(s.no).includes(search)) &&
         (cls === '' || s.cls === cls)
     );
-    // Sort by class then number
+    // Sort naturally
     students.sort((a, b) => {
-        if(a.cls < b.cls) return -1;
-        if(a.cls > b.cls) return 1;
+        let clsCompare = a.cls.localeCompare(b.cls, undefined, {numeric: true});
+        if(clsCompare !== 0) return clsCompare;
         return a.no - b.no;
     });
 
     const tbody = document.getElementById('studentTableBody');
     if (!students.length) {
-        tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-400">
-            <i class="ph-fill ph-users text-4xl mb-2 text-slate-300"></i><br>ไม่พบข้อมูลนักเรียน
-        </td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-400">ไม่พบข้อมูลนักเรียน</td></tr>`;
         return;
     }
     
@@ -998,48 +1063,11 @@ function renderStudentTable() {
     }).join('');
 }
 
-function confirmImportSample() {
-    if (db.students.length > 0) {
-        showConfirm('โหลดข้อมูลตัวอย่าง', 'มีข้อมูลนักเรียนอยู่แล้ว ต้องการเพิ่มข้อมูลตัวอย่างต่อท้ายหรือไม่?', importSampleStudents);
-    } else {
-        importSampleStudents();
-    }
-}
-
-function importSampleStudents() {
-    const classes = ['ป.1/1','ป.2/1','ป.3/1','ป.4/1','ป.5/1','ป.6/1'];
-    const firstNames = ['ธนกร','วีรภัทร','ภัทรพล','ปิยวัฒน์','นภสร','กัญญาภัค','พิมพ์ชนก','ปณิตา'];
-    const lastNames = ['สมใจ','ทองดี','แสงจันทร์','มั่นคง','ใจดี','ดวงดาว','แก้วมณี','สุขสันต์'];
-    
-    classes.forEach((cls, ci) => {
-        for (let i = 1; i <= 8; i++) {
-            const gender = i % 2 === 0 ? 'หญิง' : 'ชาย';
-            const prefix = gender === 'ชาย' ? 'ด.ช.' : 'ด.ญ.';
-            db.students.push({
-                id: db.idCounter++,
-                name: `${prefix}${firstNames[(i-1)%8]} ${lastNames[(ci+i)%8]}`,
-                no: i,
-                cls,
-                gender
-            });
-        }
-    });
-    saveDB();
-    renderStudentTable();
-    renderDashboard();
-    toast(`เพิ่มนักเรียนตัวอย่าง ${classes.length * 8} คน สำเร็จ`, 'success');
-}
-
-// ============ BULK IMPORT STUDENTS ============
+// ============ BULK IMPORT ============
 function openBulkImport() {
     document.getElementById('bi_names').value = '';
-    
-    // ตั้งค่า Default ห้องให้ตรงกับ Filter ปัจจุบัน (ถ้าเลือกไว้)
     const currentFilter = document.getElementById('studentClassFilter').value;
-    if (currentFilter) {
-        document.getElementById('bi_class').value = currentFilter;
-    }
-    
+    if (currentFilter) document.getElementById('bi_class').value = currentFilter;
     openModal('bulkImportModal');
 }
 
@@ -1048,69 +1076,45 @@ function processBulkImport() {
     const text = document.getElementById('bi_names').value;
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     
-    if (lines.length === 0) {
-        toast('กรุณากรอกหรือวางรายชื่อนักเรียนอย่างน้อย 1 คน', 'error');
-        return;
-    }
+    if (lines.length === 0) { toast('กรุณากรอกรายชื่อ', 'error'); return; }
 
-    // หาเลขที่สูงสุดในห้องปัจจุบันเพื่อใช้รัน Auto-number
     const existingStudents = db.students.filter(s => s.cls === cls);
-    let currentMaxNo = 0;
-    existingStudents.forEach(s => {
-        if (s.no > currentMaxNo) currentMaxNo = s.no;
-    });
-
+    let currentMaxNo = existingStudents.reduce((max, s) => s.no > max ? s.no : max, 0);
     let addedCount = 0;
 
     lines.forEach(line => {
         let name = line;
         let no = 0;
-        let gender = 'ชาย'; // ค่าเริ่มต้น
+        let gender = 'ชาย';
 
-        // 1. ตรวจสอบหาเลขที่จากหน้าสุดของบรรทัด เช่น "1. สมชาย" หรือ "1 สมชาย" หรือ "1) สมชาย"
         const noMatch = name.match(/^(\d+)[\.\)\s\t\-]+/);
         if (noMatch) {
             no = parseInt(noMatch[1], 10);
-            // ตัดเลขที่ด้านหน้าและสัญลักษณ์ขยะออก
             name = name.replace(/^(\d+)[\.\)\s\t\-]+/, '').trim();
         } else {
-            // ถ้าไม่พบ ให้รันเลขที่ต่อจากที่มีอยู่
             currentMaxNo++;
             no = currentMaxNo;
         }
 
-        // ปรับปรุง max number กรณีเลขที่ที่ดึงมาได้มีค่ามากกว่า
         if (no > currentMaxNo) currentMaxNo = no;
+        if (/(ด\.ญ\.|เด็กหญิง|น\.ส\.|นางสาว|นาง\s)/.test(name)) gender = 'หญิง';
 
-        // 2. วิเคราะห์เพศจากคำนำหน้าชื่อ
-        if (/(ด\.ญ\.|เด็กหญิง|น\.ส\.|นางสาว|นาง\s)/.test(name)) {
-            gender = 'หญิง';
-        }
-
-        // 3. จัดเก็บลงฐานข้อมูล
-        db.students.push({
-            id: db.idCounter++,
-            name: name,
-            no: no,
-            cls: cls,
-            gender: gender
-        });
+        db.students.push({ id: db.idCounter++, name, no, cls, gender });
         addedCount++;
     });
 
     saveDB();
     closeModal('bulkImportModal');
     
-    // ตั้งค่า Filter ให้แสดงห้องที่เพิ่งนำเข้า
     document.getElementById('studentClassFilter').value = cls;
     renderStudentTable();
     renderDashboard();
     
-    toast(`นำเข้านักเรียน ${addedCount} คน ในชั้น ${cls} สำเร็จ 🎉`, 'success');
+    toast(`นำเข้านักเรียน ${addedCount} คน ในชั้น ${cls} สำเร็จ`, 'success');
 }
 
 // ============ ATTENDANCE ============
-let currentAttendance = {}; // studentId => status
+let currentAttendance = {}; 
 
 function getAttKey() {
     const date = document.getElementById('att_date').value;
@@ -1131,8 +1135,7 @@ function renderAttendanceGrid() {
     const grid = document.getElementById('attGrid');
     if (!students.length) {
         grid.innerHTML = `<div class="col-span-full py-10 text-center text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
-            <i class="ph-fill ph-users-slash text-4xl mb-2 text-slate-300"></i>
-            <p>ไม่มีนักเรียนในชั้น ${cls}<br><span class="text-sm">กรุณาเพิ่มนักเรียนในเมนู "นักเรียน" ก่อน</span></p>
+            <p>ไม่มีนักเรียนในชั้น ${cls || '-'}</p>
         </div>`;
         updateAttQuickStats(students);
         return;
@@ -1140,10 +1143,7 @@ function renderAttendanceGrid() {
 
     grid.innerHTML = students.map(s => {
         const status = currentAttendance[s.id] || '';
-        
-        let borderClass = 'border-slate-200';
-        let bgClass = 'bg-white';
-        let iconHtml = '';
+        let borderClass = 'border-slate-200', bgClass = 'bg-white', iconHtml = '';
         
         if(status === 'present') { borderClass = 'border-green-500'; bgClass = 'bg-green-50'; iconHtml = '<div class="absolute -top-2 -right-2 w-5 h-5 bg-green-500 rounded-full text-white flex items-center justify-center text-xs shadow-sm"><i class="ph-bold ph-check"></i></div>'; }
         else if(status === 'absent') { borderClass = 'border-red-500'; bgClass = 'bg-red-50'; iconHtml = '<div class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-white flex items-center justify-center text-xs shadow-sm"><i class="ph-bold ph-x"></i></div>'; }
@@ -1159,10 +1159,10 @@ function renderAttendanceGrid() {
             </div>
             
             <div class="grid grid-cols-4 gap-1 mt-3">
-                <button onclick="event.stopPropagation(); setStatus(${s.id},'present')" class="h-6 rounded text-[10px] font-bold ${status==='present'?'bg-green-500 text-white':'bg-white text-green-600 border border-green-200 hover:bg-green-50'} transition-colors">มา</button>
-                <button onclick="event.stopPropagation(); setStatus(${s.id},'absent')" class="h-6 rounded text-[10px] font-bold ${status==='absent'?'bg-red-500 text-white':'bg-white text-red-600 border border-red-200 hover:bg-red-50'} transition-colors">ขาด</button>
-                <button onclick="event.stopPropagation(); setStatus(${s.id},'late')" class="h-6 rounded text-[10px] font-bold ${status==='late'?'bg-amber-500 text-white':'bg-white text-amber-600 border border-amber-200 hover:bg-amber-50'} transition-colors">สาย</button>
-                <button onclick="event.stopPropagation(); setStatus(${s.id},'leave')" class="h-6 rounded text-[10px] font-bold ${status==='leave'?'bg-purple-500 text-white':'bg-white text-purple-600 border border-purple-200 hover:bg-purple-50'} transition-colors">ลา</button>
+                <button onclick="event.stopPropagation(); setStatus(${s.id},'present')" class="h-6 rounded text-[10px] font-bold ${status==='present'?'bg-green-500 text-white':'bg-white text-green-600 border border-green-200'}">มา</button>
+                <button onclick="event.stopPropagation(); setStatus(${s.id},'absent')" class="h-6 rounded text-[10px] font-bold ${status==='absent'?'bg-red-500 text-white':'bg-white text-red-600 border border-red-200'}">ขาด</button>
+                <button onclick="event.stopPropagation(); setStatus(${s.id},'late')" class="h-6 rounded text-[10px] font-bold ${status==='late'?'bg-amber-500 text-white':'bg-white text-amber-600 border border-amber-200'}">สาย</button>
+                <button onclick="event.stopPropagation(); setStatus(${s.id},'leave')" class="h-6 rounded text-[10px] font-bold ${status==='leave'?'bg-purple-500 text-white':'bg-white text-purple-600 border border-purple-200'}">ลา</button>
             </div>
         </div>`;
     }).join('');
@@ -1170,21 +1170,17 @@ function renderAttendanceGrid() {
     updateAttQuickStats(students);
 }
 
-// Click entire card to cycle status easily
 function cycleStatus(studentId) {
     const states = ['', 'present', 'absent', 'late', 'leave'];
     const curr = currentAttendance[studentId] || '';
     let nextIdx = states.indexOf(curr) + 1;
-    if (nextIdx >= states.length) nextIdx = 1; // skip empty
+    if (nextIdx >= states.length) nextIdx = 1;
     setStatus(studentId, states[nextIdx]);
 }
 
 function setStatus(studentId, status) {
-    if (currentAttendance[studentId] === status) {
-        delete currentAttendance[studentId]; // toggle off
-    } else {
-        currentAttendance[studentId] = status;
-    }
+    if (currentAttendance[studentId] === status) delete currentAttendance[studentId];
+    else currentAttendance[studentId] = status;
     renderAttendanceGrid();
 }
 
@@ -1195,28 +1191,24 @@ function updateAttQuickStats(students) {
     const checked = Object.keys(currentAttendance).length;
     
     document.getElementById('attQuickStats').innerHTML = `
-        <div class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary-50 text-primary-700 flex items-center gap-1.5"><i class="ph-fill ph-users"></i> ทั้งหมด: ${total}</div>
-        <div class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-50 text-green-700 flex items-center gap-1.5"><i class="ph-bold ph-check"></i> มา: ${counts.present}</div>
-        <div class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-700 flex items-center gap-1.5"><i class="ph-bold ph-x"></i> ขาด: ${counts.absent}</div>
-        <div class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 flex items-center gap-1.5"><i class="ph-bold ph-clock"></i> สาย: ${counts.late}</div>
-        <div class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-50 text-purple-700 flex items-center gap-1.5"><i class="ph-bold ph-clipboard-text"></i> ลา: ${counts.leave}</div>
-        <div class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200">⬜ ยังไม่เช็ค: ${total - checked}</div>
+        <div class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary-50 text-primary-700">ทั้งหมด: ${total}</div>
+        <div class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-50 text-green-700">มา: ${counts.present}</div>
+        <div class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-700">ขาด: ${counts.absent}</div>
+        <div class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 text-amber-700">สาย: ${counts.late}</div>
+        <div class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-50 text-purple-700">ลา: ${counts.leave}</div>
+        <div class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200">ยังไม่เช็ค: ${total - checked}</div>
     `;
 }
 
 function markAllPresent() {
     const cls = document.getElementById('att_class').value;
-    const students = db.students.filter(s => s.cls === cls);
-    students.forEach(s => { currentAttendance[s.id] = 'present'; });
+    db.students.filter(s => s.cls === cls).forEach(s => { currentAttendance[s.id] = 'present'; });
     renderAttendanceGrid();
 }
 
 function saveAttendance() {
     const key = getAttKey();
-    const records = [];
-    for (const id in currentAttendance) {
-        records.push({ studentId: parseInt(id), status: currentAttendance[id] });
-    }
+    const records = Object.keys(currentAttendance).map(id => ({ studentId: parseInt(id), status: currentAttendance[id] }));
     db.attendance[key] = records;
     saveDB();
     toast('บันทึกการเช็คชื่อเรียบร้อย');
@@ -1231,11 +1223,8 @@ function openAddHw() {
     document.getElementById('hw_maxscore').value = '10';
     document.getElementById('hw_edit_id').value = '';
     
-    // Set to today local
     const offset = new Date().getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(Date.now() - offset)).toISOString().split('T')[0];
-    document.getElementById('hw_due').value = localISOTime;
-    
+    document.getElementById('hw_due').value = (new Date(Date.now() - offset)).toISOString().split('T')[0];
     openModal('hwModal');
 }
 
@@ -1285,9 +1274,8 @@ function saveHomework() {
 }
 
 function confirmDeleteHw(id) {
-    showConfirm('ลบงาน/การบ้าน', 'ต้องการลบงานนี้ใช่หรือไม่?\n(คะแนนของนักเรียนในงานนี้จะถูกลบไปด้วย)', () => {
+    showConfirm('ลบงาน', 'ต้องการลบงานนี้ใช่หรือไม่?\n(คะแนนของนักเรียนในงานนี้จะถูกลบไปด้วย)', () => {
         db.homework = db.homework.filter(h => h.id !== id);
-        // Also cleanup scores
         const keysToDelete = Object.keys(db.scores).filter(k => k.startsWith(id + '_'));
         keysToDelete.forEach(k => delete db.scores[k]);
         
@@ -1307,37 +1295,32 @@ function renderHomeworkList() {
         (clsF === '' || h.cls === clsF || h.cls === 'ทุกชั้น') &&
         (typeF === '' || h.type === typeF)
     );
-    hws.sort((a, b) => b.id - a.id); // Newest first
+    hws.sort((a, b) => b.id - a.id);
 
     const container = document.getElementById('hwList');
     if (!hws.length) {
-        container.innerHTML = `<div class="py-12 text-center text-slate-400">
-            <i class="ph-fill ph-clipboard-text text-4xl mb-2 text-slate-300"></i><p>ยังไม่มีรายการงาน</p>
-        </div>`;
+        container.innerHTML = `<div class="py-12 text-center text-slate-400">ยังไม่มีรายการงาน</div>`;
         return;
     }
 
     const typeColors = {
-        'งานในชั้นเรียน': 'bg-primary-50 text-primary-700 border-primary-200',
-        'การบ้าน': 'bg-amber-50 text-amber-700 border-amber-200',
-        'โปรเจกต์': 'bg-purple-50 text-purple-700 border-purple-200',
-        'แบบทดสอบ': 'bg-red-50 text-red-700 border-red-200',
-        'ทักษะปฏิบัติ': 'bg-teal-50 text-teal-700 border-teal-200'
+        'งานในชั้นเรียน': 'bg-primary-50 text-primary-700',
+        'การบ้าน': 'bg-amber-50 text-amber-700',
+        'โปรเจกต์': 'bg-purple-50 text-purple-700',
+        'แบบทดสอบ': 'bg-red-50 text-red-700',
+        'ทักษะปฏิบัติ': 'bg-teal-50 text-teal-700'
     };
 
-    // Calculate today correctly locally
     const offset = new Date().getTimezoneOffset() * 60000;
     const today = (new Date(Date.now() - offset)).toISOString().split('T')[0];
-    
     const threeDaysLater = new Date(Date.now() + 3*864e5 - offset).toISOString().split('T')[0];
 
     container.innerHTML = hws.map(h => {
         const isOverdue = h.due < today;
         const isDueSoon = !isOverdue && h.due <= threeDaysLater;
-        
         let dueBadge = '';
-        if(isOverdue) dueBadge = `<span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-red-100 text-red-700">เกินกำหนด</span>`;
-        else if(isDueSoon) dueBadge = `<span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-amber-100 text-amber-700">ใกล้ส่ง</span>`;
+        if(isOverdue) dueBadge = `<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-red-100 text-red-700">เกินกำหนด</span>`;
+        else if(isDueSoon) dueBadge = `<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-amber-100 text-amber-700">ใกล้ส่ง</span>`;
 
         const scoredCount = Object.keys(db.scores).filter(k => k.startsWith(h.id + '_')).length;
         
@@ -1346,21 +1329,20 @@ function renderHomeworkList() {
             <div class="flex flex-col sm:flex-row justify-between items-start gap-4">
                 <div class="flex-grow">
                     <div class="flex items-center gap-2 mb-1">
-                        <h4 class="font-semibold text-slate-800 text-lg leading-tight">${escapeHTML(h.title)}</h4>
-                        ${dueBadge}
+                        <h4 class="font-semibold text-slate-800 text-lg">${escapeHTML(h.title)}</h4> ${dueBadge}
                     </div>
                     <div class="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-slate-500 mt-2">
-                        <span class="inline-flex px-2 py-0.5 rounded border font-medium ${typeColors[h.type]||'bg-slate-50 border-slate-200'}">${h.type}</span>
-                        <span class="flex items-center gap-1"><i class="ph-fill ph-users"></i> ${h.cls}</span>
-                        <span class="flex items-center gap-1"><i class="ph-fill ph-star"></i> เต็ม ${h.maxScore}</span>
-                        <span class="flex items-center gap-1 ${isOverdue ? 'text-red-600 font-semibold' : ''}"><i class="ph-fill ph-calendar-blank"></i> ส่ง ${formatDate(h.due)}</span>
-                        <span class="flex items-center gap-1 text-primary-600 bg-primary-50 px-2 rounded-full"><i class="ph-fill ph-check-circle"></i> ตรวจแล้ว ${scoredCount} คน</span>
+                        <span class="inline-flex px-2 py-0.5 rounded border font-medium ${typeColors[h.type]||'bg-slate-50'}">${h.type}</span>
+                        <span><i class="ph-fill ph-users"></i> ${h.cls}</span>
+                        <span><i class="ph-fill ph-star"></i> เต็ม ${h.maxScore}</span>
+                        <span class="${isOverdue ? 'text-red-600 font-semibold' : ''}"><i class="ph-fill ph-calendar-blank"></i> ส่ง ${formatDate(h.due)}</span>
+                        <span class="text-primary-600 bg-primary-50 px-2 rounded-full">ตรวจแล้ว ${scoredCount} คน</span>
                     </div>
                     ${h.desc ? `<p class="mt-3 text-sm text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">${escapeHTML(h.desc).replace(/\n/g, '<br>')}</p>` : ''}
                 </div>
-                <div class="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-0 pt-3 sm:pt-0 border-slate-100 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                    <button onclick="openEditHw(${h.id})" class="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center gap-1"><i class="ph-fill ph-pencil-simple"></i> แก้ไข</button>
-                    <button onclick="confirmDeleteHw(${h.id})" class="px-3 py-1.5 text-xs font-medium bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors flex items-center gap-1"><i class="ph-fill ph-trash"></i> ลบ</button>
+                <div class="flex items-center gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    <button onclick="openEditHw(${h.id})" class="px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg">แก้ไข</button>
+                    <button onclick="confirmDeleteHw(${h.id})" class="px-3 py-1.5 text-xs bg-red-50 text-red-600 hover:bg-red-100 rounded-lg">ลบ</button>
                 </div>
             </div>
         </div>`;
@@ -1385,19 +1367,17 @@ function renderScoreTable() {
     const tbody = document.getElementById('scoreTableBody');
 
     if (!students.length) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400">ไม่มีนักเรียนในชั้น ${cls}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400">ไม่มีนักเรียน</td></tr>`;
         return;
     }
     
     if (!hw) {
         tbody.innerHTML = students.map(s => `
         <tr>
-            <td class="px-4 py-3 text-center text-slate-500 font-medium">${s.no}</td>
-            <td class="px-4 py-3 text-slate-800 font-medium">${escapeHTML(s.name)}</td>
-            <td class="px-4 py-3"><input type="text" disabled placeholder="-" class="w-full text-center px-2 py-1 bg-slate-50 border border-slate-200 rounded text-sm text-slate-400 cursor-not-allowed"></td>
-            <td class="px-4 py-3 text-center text-slate-400">-</td>
-            <td class="px-4 py-3 text-center text-slate-400">-</td>
-            <td class="px-4 py-3 text-center text-slate-400">-</td>
+            <td class="px-4 py-3 text-center text-slate-500">${s.no}</td>
+            <td class="px-4 py-3 font-medium">${escapeHTML(s.name)}</td>
+            <td class="px-4 py-3"><input type="text" disabled placeholder="-" class="w-full text-center px-2 py-1 bg-slate-50 border border-slate-200 rounded text-sm cursor-not-allowed"></td>
+            <td class="px-4 py-3 text-center">-</td><td class="px-4 py-3 text-center">-</td><td class="px-4 py-3 text-center">-</td>
         </tr>`).join('');
         return;
     }
@@ -1410,18 +1390,15 @@ function renderScoreTable() {
         const grade = getGrade(pct);
         
         return `
-        <tr class="hover:bg-slate-50 transition-colors">
-            <td class="px-4 py-3 text-center text-slate-500 font-medium">${s.no}</td>
-            <td class="px-4 py-3 text-slate-800 font-medium">${escapeHTML(s.name)}</td>
+        <tr class="hover:bg-slate-50">
+            <td class="px-4 py-3 text-center text-slate-500">${s.no}</td>
+            <td class="px-4 py-3 font-medium">${escapeHTML(s.name)}</td>
             <td class="px-4 py-3">
-                <input type="number" id="score_${s.id}" min="0" max="${hw.maxScore}" step="0.5"
-                    value="${hasScore ? existing : ''}" placeholder="0" 
-                    oninput="updateScoreRow(${s.id},${hwId},${hw.maxScore})"
-                    class="w-full max-w-[80px] mx-auto block text-center px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none text-sm font-semibold text-primary-900 bg-white transition-all">
+                <input type="number" id="score_${s.id}" min="0" max="${hw.maxScore}" step="0.5" value="${hasScore ? existing : ''}" oninput="updateScoreRow(${s.id},${hwId},${hw.maxScore})" class="w-full max-w-[80px] mx-auto block text-center px-2 py-1.5 border border-slate-300 rounded outline-none text-sm font-semibold">
             </td>
             <td class="px-4 py-3 text-center font-bold text-slate-400">/${hw.maxScore}</td>
             <td class="px-4 py-3 text-center font-semibold text-slate-700" id="pct_${s.id}">${hasScore ? pct + '%' : '-'}</td>
-            <td class="px-4 py-3 text-center" id="grade_${s.id}">${hasScore ? `<span class="inline-block px-2 py-1 text-xs font-semibold rounded-md ${grade.cls}">${grade.text}</span>` : '-'}</td>
+            <td class="px-4 py-3 text-center" id="grade_${s.id}">${hasScore ? `<span class="px-2 py-1 text-xs font-semibold rounded-md ${grade.cls}">${grade.text}</span>` : '-'}</td>
         </tr>`;
     }).join('');
 }
@@ -1430,7 +1407,6 @@ function updateScoreRow(studentId, hwId, maxScore) {
     const inp = document.getElementById(`score_${studentId}`);
     let val = parseFloat(inp.value);
     
-    // Auto correct if over max
     if (val > maxScore) { val = maxScore; inp.value = maxScore; }
     if (val < 0) { val = 0; inp.value = 0; }
 
@@ -1438,15 +1414,13 @@ function updateScoreRow(studentId, hwId, maxScore) {
     const gradeEl = document.getElementById(`grade_${studentId}`);
     
     if (isNaN(val) || inp.value === '') {
-        pctEl.textContent = '-';
-        gradeEl.innerHTML = '-';
-        return;
+        pctEl.textContent = '-'; gradeEl.innerHTML = '-'; return;
     }
     
     const pct = Math.round(val / maxScore * 100);
     pctEl.textContent = pct + '%';
     const g = getGrade(pct);
-    gradeEl.innerHTML = `<span class="inline-block px-2 py-1 text-xs font-semibold rounded-md ${g.cls}">${g.text}</span>`;
+    gradeEl.innerHTML = `<span class="px-2 py-1 text-xs font-semibold rounded-md ${g.cls}">${g.text}</span>`;
 }
 
 function getGrade(pct) {
@@ -1462,25 +1436,18 @@ function saveScores() {
     const cls = document.getElementById('sc_class').value;
     const hwId = parseInt(document.getElementById('sc_hw').value);
     
-    if (!hwId) { toast('กรุณาเลือกงานที่ต้องการลงคะแนนก่อน', 'error'); return; }
+    if (!hwId) { toast('กรุณาเลือกงาน', 'error'); return; }
     
-    const students = db.students.filter(s => s.cls === cls);
     let count = 0;
-    
-    students.forEach(s => {
+    db.students.filter(s => s.cls === cls).forEach(s => {
         const inp = document.getElementById(`score_${s.id}`);
-        if (inp && inp.value !== '') {
-            db.scores[`${hwId}_${s.id}`] = parseFloat(inp.value);
-            count++;
-        } else {
-            // Optional: clear if empty
-            delete db.scores[`${hwId}_${s.id}`];
-        }
+        if (inp && inp.value !== '') { db.scores[`${hwId}_${s.id}`] = parseFloat(inp.value); count++; }
+        else { delete db.scores[`${hwId}_${s.id}`]; }
     });
     
     saveDB();
     toast(`บันทึกคะแนน ${count} คน เรียบร้อย`);
-    renderHomeworkList(); // Update counts
+    renderHomeworkList(); 
 }
 
 function renderScoreSummary() {
@@ -1488,21 +1455,16 @@ function renderScoreSummary() {
     const students = cls ? db.students.filter(s => s.cls === cls) : db.students;
     const container = document.getElementById('scoreSummaryContent');
     
-    if (!students.length) {
-        container.innerHTML = `<div class="p-10 text-center text-slate-400 bg-white rounded-2xl border border-slate-100">
-            <i class="ph-fill ph-chart-line-down text-4xl mb-2 text-slate-300"></i><p>ไม่มีข้อมูลนักเรียน</p>
-        </div>`;
-        return;
-    }
+    if (!students.length) { container.innerHTML = `<div class="p-10 text-center text-slate-400">ไม่มีข้อมูลนักเรียน</div>`; return; }
 
     let html = '';
     const grouped = {};
-    students.forEach(s => { 
-        if (!grouped[s.cls]) grouped[s.cls] = []; 
-        grouped[s.cls].push(s); 
-    });
+    students.forEach(s => { if (!grouped[s.cls]) grouped[s.cls] = []; grouped[s.cls].push(s); });
 
-    for (const c in grouped) {
+    // Order classes naturally
+    const sortedClasses = Object.keys(grouped).sort((a,b) => a.localeCompare(b, undefined, {numeric:true}));
+
+    for (const c of sortedClasses) {
         const clsStudents = grouped[c].sort((a,b)=>a.no-b.no);
         const clsHws = db.homework.filter(h => h.cls === c || h.cls === 'ทุกชั้น');
 
@@ -1512,11 +1474,7 @@ function renderScoreSummary() {
             let total = 0, maxTotal = 0, hwCount = 0;
             clsHws.forEach(h => {
                 const sc = db.scores[`${h.id}_${s.id}`];
-                if (sc !== undefined) { 
-                    total += sc; 
-                    maxTotal += h.maxScore; 
-                    hwCount++; 
-                }
+                if (sc !== undefined) { total += sc; maxTotal += h.maxScore; hwCount++; }
             });
             
             const pct = maxTotal > 0 ? Math.round(total/maxTotal*100) : 0;
@@ -1526,10 +1484,10 @@ function renderScoreSummary() {
             return `
             <tr class="hover:bg-slate-50">
                 <td class="px-4 py-3 text-center text-slate-500">${s.no}</td>
-                <td class="px-4 py-3 font-medium text-slate-800">${escapeHTML(s.name)}</td>
-                <td class="px-4 py-3 text-center font-semibold text-primary-700">${total} <span class="text-xs text-slate-400 font-normal">/ ${maxTotal}</span></td>
+                <td class="px-4 py-3 font-medium">${escapeHTML(s.name)}</td>
+                <td class="px-4 py-3 text-center font-semibold">${total} / ${maxTotal}</td>
                 <td class="px-4 py-3 text-center font-bold">${maxTotal > 0 ? pct+'%' : '-'}</td>
-                <td class="px-4 py-3 text-center">${maxTotal > 0 ? `<span class="px-2 py-1 text-xs font-semibold rounded-md ${g.cls}">${g.text}</span>` : '-'}</td>
+                <td class="px-4 py-3 text-center">${maxTotal > 0 ? `<span class="px-2 py-1 text-xs rounded-md ${g.cls}">${g.text}</span>` : '-'}</td>
                 <td class="px-4 py-3 text-center text-slate-400 text-sm">${hwCount} งาน</td>
             </tr>`;
         }).join('');
@@ -1537,26 +1495,23 @@ function renderScoreSummary() {
         const classAvg = avgCount > 0 ? Math.round(avgTotal/avgCount) : 0;
         
         html += `
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden break-inside-avoid">
-            <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4">
-                <h3 class="font-display font-semibold text-primary-900 text-lg flex items-center gap-2">
-                    <i class="ph-fill ph-users-three"></i> ชั้น ${c}
-                </h3>
-                <div class="bg-white px-4 py-1.5 rounded-lg border border-slate-200 text-sm flex items-center gap-2 shadow-sm">
-                    <span class="text-slate-500">ค่าเฉลี่ยห้อง</span>
-                    <span class="font-bold text-lg text-primary-600">${classAvg}%</span>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+            <div class="px-5 py-4 bg-slate-50 flex items-center justify-between">
+                <h3 class="font-display font-semibold text-primary-900 text-lg">ชั้น ${c}</h3>
+                <div class="bg-white px-3 py-1 rounded-lg border text-sm shadow-sm">
+                    เฉลี่ยห้อง <span class="font-bold text-primary-600">${classAvg}%</span>
                 </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse whitespace-nowrap">
                     <thead>
-                        <tr class="bg-white text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
-                            <th class="px-4 py-3 font-semibold w-16 text-center">เลขที่</th>
-                            <th class="px-4 py-3 font-semibold">ชื่อ-สกุล</th>
-                            <th class="px-4 py-3 font-semibold text-center">คะแนนรวม</th>
-                            <th class="px-4 py-3 font-semibold text-center">%</th>
-                            <th class="px-4 py-3 font-semibold text-center">ระดับ</th>
-                            <th class="px-4 py-3 font-semibold text-center">ส่งแล้ว</th>
+                        <tr class="bg-white text-slate-500 text-xs uppercase border-b">
+                            <th class="px-4 py-3 w-16 text-center">เลขที่</th>
+                            <th class="px-4 py-3">ชื่อ-สกุล</th>
+                            <th class="px-4 py-3 text-center">คะแนนรวม</th>
+                            <th class="px-4 py-3 text-center">%</th>
+                            <th class="px-4 py-3 text-center">ระดับ</th>
+                            <th class="px-4 py-3 text-center">ส่งแล้ว</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">${rows}</tbody>
@@ -1565,7 +1520,7 @@ function renderScoreSummary() {
         </div>`;
     }
     
-    container.innerHTML = html || `<div class="p-10 text-center text-slate-400"><p>ไม่มีข้อมูลคะแนน</p></div>`;
+    container.innerHTML = html;
 }
 
 // ============ REPORT ============
@@ -1588,8 +1543,8 @@ function renderReport() {
     });
 
     const students = db.students.filter(s => cls === '' || s.cls === cls).sort((a,b)=>{
-        if(a.cls < b.cls) return -1;
-        if(a.cls > b.cls) return 1;
+        let clsCompare = a.cls.localeCompare(b.cls, undefined, {numeric:true});
+        if(clsCompare!==0) return clsCompare;
         return a.no - b.no;
     });
 
@@ -1601,31 +1556,17 @@ function renderReport() {
         
         const total = st.present + st.absent + st.late + st.leave;
         const pct = total > 0 ? Math.round((st.present + st.late)/total*100) : 0;
-        const atRisk = pct < 80 && total > 0;
         
         return `
-        <tr class="hover:bg-slate-50 transition-colors ${atRisk ? 'bg-red-50/30' : ''}">
-            <td class="px-4 py-3 text-center text-slate-500">${s.no}</td>
-            <td class="px-4 py-3">
-                <div class="font-medium text-slate-800 flex items-center gap-2">
-                    ${escapeHTML(s.name)}
-                    ${atRisk ? '<span class="px-1.5 py-0.5 text-[10px] bg-red-100 text-red-600 rounded font-bold uppercase">เสี่ยง</span>' : ''}
-                </div>
-            </td>
-            <td class="px-4 py-3 text-center"><span class="px-2 py-1 text-xs rounded bg-slate-100 text-slate-600">${s.cls}</span></td>
-            <td class="px-4 py-3 text-center font-semibold text-green-600">${st.present}</td>
-            <td class="px-4 py-3 text-center font-semibold text-red-600">${st.absent}</td>
-            <td class="px-4 py-3 text-center font-semibold text-amber-600">${st.late}</td>
-            <td class="px-4 py-3 text-center font-semibold text-purple-600">${st.leave}</td>
-            <td class="px-4 py-3 text-center font-bold text-slate-700">${total}</td>
-            <td class="px-4 py-3">
-                <div class="flex items-center gap-2 min-w-[120px]">
-                    <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div class="h-full ${pct>=80?'bg-green-500':pct>=60?'bg-amber-500':'bg-red-500'}" style="width:${pct}%"></div>
-                    </div>
-                    <span class="text-sm font-bold w-10 text-right ${pct>=80?'text-green-600':pct>=60?'text-amber-600':'text-red-600'}">${pct}%</span>
-                </div>
-            </td>
+        <tr>
+            <td class="px-4 py-2 text-center">${s.no}</td>
+            <td class="px-4 py-2">${escapeHTML(s.name)}</td>
+            <td class="px-4 py-2 text-center">${s.cls}</td>
+            <td class="px-4 py-2 text-center text-green-600 font-semibold">${st.present}</td>
+            <td class="px-4 py-2 text-center text-red-600 font-semibold">${st.absent}</td>
+            <td class="px-4 py-2 text-center text-amber-600 font-semibold">${st.late}</td>
+            <td class="px-4 py-2 text-center text-purple-600 font-semibold">${st.leave}</td>
+            <td class="px-4 py-2 text-center font-bold">${pct}%</td>
         </tr>`;
     }).join('');
 
@@ -1633,44 +1574,32 @@ function renderReport() {
     const overallPct = grand > 0 ? Math.round((totalP+totalL)/grand*100) : 0;
 
     document.getElementById('reportContent').innerHTML = `
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 print:grid-cols-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-green-50 text-green-500 flex items-center justify-center text-2xl"><i class="ph-bold ph-check"></i></div>
-                <div><div class="text-xs text-slate-500 font-semibold mb-0.5">มาเรียน</div><div class="text-xl font-bold text-slate-800">${totalP} <span class="text-xs font-normal text-slate-400">ครั้ง</span></div></div>
+                <div class="w-10 h-10 rounded-full bg-green-50 text-green-500 flex items-center justify-center text-xl"><i class="ph-bold ph-check"></i></div>
+                <div><div class="text-xs text-slate-500">มาเรียน</div><div class="text-lg font-bold">${totalP}</div></div>
             </div>
             <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-2xl"><i class="ph-bold ph-x"></i></div>
-                <div><div class="text-xs text-slate-500 font-semibold mb-0.5">ขาดเรียน</div><div class="text-xl font-bold text-slate-800">${totalA} <span class="text-xs font-normal text-slate-400">ครั้ง</span></div></div>
+                <div class="w-10 h-10 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-xl"><i class="ph-bold ph-x"></i></div>
+                <div><div class="text-xs text-slate-500">ขาดเรียน</div><div class="text-lg font-bold">${totalA}</div></div>
             </div>
             <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-2xl"><i class="ph-bold ph-clock"></i></div>
-                <div><div class="text-xs text-slate-500 font-semibold mb-0.5">มาสาย</div><div class="text-xl font-bold text-slate-800">${totalL} <span class="text-xs font-normal text-slate-400">ครั้ง</span></div></div>
+                <div class="w-10 h-10 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-xl"><i class="ph-bold ph-clock"></i></div>
+                <div><div class="text-xs text-slate-500">มาสาย</div><div class="text-lg font-bold">${totalL}</div></div>
             </div>
             <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center text-2xl"><i class="ph-bold ph-chart-pie-slice"></i></div>
-                <div><div class="text-xs text-slate-500 font-semibold mb-0.5">อัตราเข้าเรียนช่วงนี้</div><div class="text-xl font-bold text-primary-700">${overallPct}%</div></div>
+                <div class="w-10 h-10 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center text-xl"><i class="ph-bold ph-chart-pie-slice"></i></div>
+                <div><div class="text-xs text-slate-500">อัตราเข้าเรียน</div><div class="text-lg font-bold">${overallPct}%</div></div>
             </div>
         </div>
-
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden print:shadow-none print:border-none">
-            <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
-                <h3 class="font-display font-semibold text-primary-900 flex items-center gap-2">
-                    <i class="ph-fill ph-file-text"></i> รายงานการเข้าเรียน ${from ? formatDate(from)+' – '+formatDate(to) : ''} ${cls ? `(ชั้น ${cls})` : ''}
-                </h3>
-            </div>
+        <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse whitespace-nowrap">
+                <table class="w-full text-left border-collapse whitespace-nowrap text-sm">
                     <thead>
-                        <tr class="bg-white text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
-                            <th class="px-4 py-3 font-semibold text-center w-16">เลขที่</th>
-                            <th class="px-4 py-3 font-semibold">ชื่อ-สกุล</th>
-                            <th class="px-4 py-3 font-semibold text-center">ชั้น</th>
-                            <th class="px-4 py-3 font-semibold text-center">มาเรียน</th>
-                            <th class="px-4 py-3 font-semibold text-center">ขาด</th>
-                            <th class="px-4 py-3 font-semibold text-center">สาย</th>
-                            <th class="px-4 py-3 font-semibold text-center">ลา</th>
-                            <th class="px-4 py-3 font-semibold text-center">รวม</th>
-                            <th class="px-4 py-3 font-semibold">% เข้าเรียน</th>
+                        <tr class="bg-slate-50 text-slate-600">
+                            <th class="px-4 py-3 text-center">เลขที่</th><th class="px-4 py-3">ชื่อ-สกุล</th><th class="px-4 py-3 text-center">ชั้น</th>
+                            <th class="px-4 py-3 text-center">มา</th><th class="px-4 py-3 text-center">ขาด</th><th class="px-4 py-3 text-center">สาย</th>
+                            <th class="px-4 py-3 text-center">ลา</th><th class="px-4 py-3 text-center">% เข้าเรียน</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">${rows}</tbody>
@@ -1680,8 +1609,8 @@ function renderReport() {
 }
 
 function renderClassReport() {
-    const classes = ['ป.1/1','ป.1/2','ป.2/1','ป.2/2','ป.3/1','ป.3/2','ป.4/1','ป.4/2','ป.5/1','ป.5/2','ป.6/1','ป.6/2'];
-    let html = '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">';
+    const classes = db.classes || [];
+    let html = '<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">';
     
     classes.forEach(c => {
         const students = db.students.filter(s => s.cls === c);
@@ -1698,74 +1627,52 @@ function renderClassReport() {
         const pct = total > 0 ? Math.round((attData.present+attData.late)/total*100) : 0;
         
         html += `
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 hover:shadow-md transition-shadow">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="font-display font-semibold text-lg text-primary-900">ชั้น ${c}</h3>
-                <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded font-medium">${students.length} คน</span>
+                <span class="text-xs bg-slate-100 px-2 py-1 rounded font-medium">${students.length} คน</span>
             </div>
-            
             <div class="mb-5">
-                <div class="flex justify-between text-sm mb-1.5 font-medium">
-                    <span class="text-slate-500">อัตราเข้าเรียนรวม</span>
-                    <span class="${pct>=80?'text-green-600':pct>=60?'text-amber-600':'text-red-600'}">${pct}%</span>
-                </div>
-                <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div class="h-full ${pct>=80?'bg-green-500':pct>=60?'bg-amber-500':'bg-red-500'}" style="width:${pct}%"></div>
-                </div>
+                <div class="flex justify-between text-sm mb-1.5"><span class="text-slate-500">เข้าเรียนรวม</span><span class="font-bold">${pct}%</span></div>
+                <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-primary-500" style="width:${pct}%"></div></div>
             </div>
-            
-            <div class="grid grid-cols-2 gap-y-3 gap-x-2 text-sm">
-                <div class="flex items-center gap-2"><i class="ph-bold ph-check text-green-500"></i> มา <span class="font-bold text-slate-700 ml-auto">${attData.present}</span></div>
-                <div class="flex items-center gap-2"><i class="ph-bold ph-x text-red-500"></i> ขาด <span class="font-bold text-slate-700 ml-auto">${attData.absent}</span></div>
-                <div class="flex items-center gap-2"><i class="ph-bold ph-clock text-amber-500"></i> สาย <span class="font-bold text-slate-700 ml-auto">${attData.late}</span></div>
-                <div class="flex items-center gap-2"><i class="ph-bold ph-clipboard-text text-purple-500"></i> ลา <span class="font-bold text-slate-700 ml-auto">${attData.leave}</span></div>
+            <div class="grid grid-cols-2 gap-2 text-sm">
+                <div><i class="ph-bold ph-check text-green-500"></i> มา: <b>${attData.present}</b></div>
+                <div><i class="ph-bold ph-x text-red-500"></i> ขาด: <b>${attData.absent}</b></div>
+                <div><i class="ph-bold ph-clock text-amber-500"></i> สาย: <b>${attData.late}</b></div>
+                <div><i class="ph-bold ph-clipboard-text text-purple-500"></i> ลา: <b>${attData.leave}</b></div>
             </div>
         </div>`;
     });
     
-    html += '</div>';
-    document.getElementById('classReportContent').innerHTML = html;
+    document.getElementById('classReportContent').innerHTML = html + '</div>';
 }
 
-function renderRepStudentList() {
-    filterRepStudents();
-}
+function renderRepStudentList() { filterRepStudents(); }
 
 function filterRepStudents() {
     const search = document.getElementById('repStudentSearch').value.toLowerCase();
     const students = db.students
         .filter(s => s.name.toLowerCase().includes(search) || String(s.no).includes(search))
-        .sort((a,b)=>{
-            if(a.cls < b.cls) return -1;
-            if(a.cls > b.cls) return 1;
-            return a.no - b.no;
-        });
+        .sort((a,b)=>{ let clsCompare = a.cls.localeCompare(b.cls,undefined,{numeric:true}); return clsCompare!==0 ? clsCompare : a.no - b.no; });
         
     const listHtml = `
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="overflow-x-auto max-h-[600px] overflow-y-auto hide-scrollbar">
-            <table class="w-full text-left border-collapse whitespace-nowrap relative">
-                <thead class="sticky top-0 z-10">
-                    <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider shadow-sm">
-                        <th class="px-4 py-3 font-semibold text-center w-12">เลขที่</th>
-                        <th class="px-4 py-3 font-semibold">ชื่อ-สกุล</th>
-                        <th class="px-4 py-3 font-semibold text-center">ชั้น</th>
-                        <th class="px-4 py-3 font-semibold text-center">% เข้าเรียน</th>
-                        <th class="px-4 py-3 font-semibold text-center"></th>
-                    </tr>
-                </thead>
+            <table class="w-full text-left border-collapse whitespace-nowrap text-sm">
+                <thead class="sticky top-0 bg-slate-50 z-10 shadow-sm"><tr class="text-slate-500">
+                    <th class="px-4 py-3 text-center w-12">เลขที่</th><th class="px-4 py-3">ชื่อ-สกุล</th><th class="px-4 py-3 text-center">ชั้น</th><th class="px-4 py-3 text-center">%</th><th class="px-4 py-3"></th>
+                </tr></thead>
                 <tbody class="divide-y divide-slate-100">
                     ${students.map(s => {
                         const st = getStudentStats(s.id);
                         const total = st.present+st.absent+st.late+st.leave;
                         const pct = total > 0 ? Math.round((st.present+st.late)/total*100) : 0;
                         return `
-                        <tr class="hover:bg-primary-50/50 transition-colors cursor-pointer" onclick="showStudentDetail(${s.id})">
-                            <td class="px-4 py-3 text-center text-slate-500">${s.no}</td>
-                            <td class="px-4 py-3 font-medium text-slate-800">${escapeHTML(s.name)}</td>
-                            <td class="px-4 py-3 text-center"><span class="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-600">${s.cls}</span></td>
-                            <td class="px-4 py-3 text-center font-bold ${pct>=80?'text-green-600':pct>=60?'text-amber-600':'text-red-600'}">${total>0?pct+'%':'-'}</td>
-                            <td class="px-4 py-3 text-center"><button class="text-primary-600 hover:text-primary-800 text-sm font-medium">ดูข้อมูล <i class="ph-bold ph-caret-right"></i></button></td>
+                        <tr class="hover:bg-primary-50 cursor-pointer" onclick="showStudentDetail(${s.id})">
+                            <td class="px-4 py-3 text-center">${s.no}</td><td class="px-4 py-3 font-medium">${escapeHTML(s.name)}</td>
+                            <td class="px-4 py-3 text-center">${s.cls}</td><td class="px-4 py-3 text-center font-bold">${total>0?pct+'%':'-'}</td>
+                            <td class="px-4 py-3 text-center"><button class="text-primary-600 font-medium">ดูข้อมูล</button></td>
                         </tr>`;
                     }).join('')}
                 </tbody>
@@ -1773,8 +1680,7 @@ function filterRepStudents() {
         </div>
     </div>`;
     
-    const container = document.getElementById('repStudentList');
-    if(container) container.innerHTML = listHtml;
+    if(document.getElementById('repStudentList')) document.getElementById('repStudentList').innerHTML = listHtml;
 }
 
 function showStudentDetail(id) {
@@ -1784,7 +1690,6 @@ function showStudentDetail(id) {
     const total = st.present+st.absent+st.late+st.leave;
     const pct = total > 0 ? Math.round((st.present+st.late)/total*100) : 0;
 
-    // Attendance History
     const history = [];
     for (const key in db.attendance) {
         const [date, cls, period] = key.split('_');
@@ -1793,76 +1698,30 @@ function showStudentDetail(id) {
         if (r) history.push({ date, period, status: r.status });
     }
     history.sort((a,b) => b.date.localeCompare(a.date));
-    
     const statusLabels = { present:'มาเรียน', absent:'ขาดเรียน', late:'มาสาย', leave:'ลา' };
     const statusColors = { present:'bg-green-100 text-green-700', absent:'bg-red-100 text-red-700', late:'bg-amber-100 text-amber-700', leave:'bg-purple-100 text-purple-700' };
 
-    // Score History
-    const scoresHtml = db.homework.filter(h => h.cls === s.cls || h.cls === 'ทุกชั้น').map(h => {
-        const score = db.scores[`${h.id}_${s.id}`];
-        const hasScore = score !== undefined && score !== '';
-        const pctScore = hasScore ? Math.round(score/h.maxScore*100) : 0;
-        const color = !hasScore ? 'text-slate-400' : pctScore >= 50 ? 'text-green-600' : 'text-red-600';
-        return `
-        <div class="flex justify-between items-center py-2 border-b border-slate-100 last:border-0">
-            <div class="text-sm truncate pr-2" title="${escapeHTML(h.title)}">${escapeHTML(h.title)}</div>
-            <div class="text-sm font-bold whitespace-nowrap ${color}">${hasScore ? `${score}/${h.maxScore}` : '-'}</div>
-        </div>`;
-    }).join('');
-
     document.getElementById('repStudentDetail').innerHTML = `
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden sticky top-24">
-            <div class="p-6 bg-gradient-to-br from-primary-800 to-primary-900 text-white text-center relative">
-                <div class="w-20 h-20 mx-auto bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-4xl mb-3 shadow-inner">
-                    ${s.gender==='ชาย'?'👦🏻':'👧🏻'}
-                </div>
-                <h3 class="font-display font-semibold text-xl leading-tight mb-1">${escapeHTML(s.name)}</h3>
+            <div class="p-6 bg-primary-800 text-white text-center">
+                <h3 class="font-display font-semibold text-xl">${escapeHTML(s.name)}</h3>
                 <p class="text-primary-200 text-sm">เลขที่ ${s.no} • ชั้น ${s.cls}</p>
-                
-                <div class="absolute top-4 right-4 bg-white text-primary-900 font-bold px-3 py-1 rounded-full shadow-sm text-sm">
-                    ${total>0?pct+'%':'N/A'}
-                </div>
             </div>
-            
             <div class="p-5">
                 <div class="grid grid-cols-4 gap-2 mb-6 text-center">
-                    <div class="bg-green-50 rounded-lg py-2">
-                        <div class="text-lg font-bold text-green-600 leading-tight">${st.present}</div>
-                        <div class="text-[10px] text-green-600 uppercase font-semibold">มา</div>
-                    </div>
-                    <div class="bg-red-50 rounded-lg py-2">
-                        <div class="text-lg font-bold text-red-600 leading-tight">${st.absent}</div>
-                        <div class="text-[10px] text-red-600 uppercase font-semibold">ขาด</div>
-                    </div>
-                    <div class="bg-amber-50 rounded-lg py-2">
-                        <div class="text-lg font-bold text-amber-600 leading-tight">${st.late}</div>
-                        <div class="text-[10px] text-amber-600 uppercase font-semibold">สาย</div>
-                    </div>
-                    <div class="bg-purple-50 rounded-lg py-2">
-                        <div class="text-lg font-bold text-purple-600 leading-tight">${st.leave}</div>
-                        <div class="text-[10px] text-purple-600 uppercase font-semibold">ลา</div>
-                    </div>
+                    <div class="bg-green-50 rounded-lg py-2"><div class="font-bold text-green-600">${st.present}</div><div class="text-[10px]">มา</div></div>
+                    <div class="bg-red-50 rounded-lg py-2"><div class="font-bold text-red-600">${st.absent}</div><div class="text-[10px]">ขาด</div></div>
+                    <div class="bg-amber-50 rounded-lg py-2"><div class="font-bold text-amber-600">${st.late}</div><div class="text-[10px]">สาย</div></div>
+                    <div class="bg-purple-50 rounded-lg py-2"><div class="font-bold text-purple-600">${st.leave}</div><div class="text-[10px]">ลา</div></div>
                 </div>
-                
-                <div class="mb-6">
-                    <h4 class="font-semibold text-slate-800 mb-3 flex items-center gap-2 border-l-2 border-primary-500 pl-2">
-                        ประวัติการส่งงาน
-                    </h4>
-                    <div class="max-h-40 overflow-y-auto pr-2 text-sm hide-scrollbar">
-                        ${scoresHtml || '<div class="text-slate-400 text-center py-4">ยังไม่มีงาน</div>'}
-                    </div>
-                </div>
-
                 <div>
-                    <h4 class="font-semibold text-slate-800 mb-3 flex items-center gap-2 border-l-2 border-primary-500 pl-2">
-                        ประวัติการเข้าเรียน
-                    </h4>
-                    <div class="max-h-48 overflow-y-auto pr-2 hide-scrollbar">
+                    <h4 class="font-semibold text-slate-800 mb-3 border-l-2 border-primary-500 pl-2">ประวัติการเข้าเรียน</h4>
+                    <div class="max-h-60 overflow-y-auto pr-2 hide-scrollbar">
                         ${history.length ? history.map(h => `
-                        <div class="flex justify-between items-center py-2.5 border-b border-slate-100 last:border-0 text-sm">
-                            <span class="text-slate-600">${formatDate(h.date)} <span class="text-xs text-slate-400 ml-1">(คาบ ${h.period})</span></span>
-                            <span class="px-2 py-1 text-[10px] font-bold uppercase rounded ${statusColors[h.status]}">${statusLabels[h.status]}</span>
-                        </div>`).join('') : '<div class="text-slate-400 text-center py-4">ไม่มีประวัติการเข้าเรียน</div>'}
+                        <div class="flex justify-between items-center py-2 border-b border-slate-100 text-sm">
+                            <span class="text-slate-600">${formatDate(h.date)} (คาบ ${h.period})</span>
+                            <span class="px-2 py-0.5 text-[10px] font-bold rounded ${statusColors[h.status]}">${statusLabels[h.status]}</span>
+                        </div>`).join('') : '<div class="text-slate-400 text-center py-4">ไม่มีประวัติ</div>'}
                     </div>
                 </div>
             </div>
@@ -1877,120 +1736,55 @@ function renderDashboard() {
 
     let totalPresent = 0, totalAttRecords = 0;
     for (const key in db.attendance) {
-        db.attendance[key].forEach(r => {
-            totalAttRecords++;
-            if (r.status === 'present' || r.status === 'late') totalPresent++;
-        });
+        db.attendance[key].forEach(r => { totalAttRecords++; if (r.status === 'present' || r.status === 'late') totalPresent++; });
     }
     const overallPct = totalAttRecords > 0 ? Math.round(totalPresent/totalAttRecords*100) : 0;
 
     document.getElementById('dashStats').innerHTML = `
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 relative overflow-hidden">
-            <div class="absolute -right-4 -bottom-4 opacity-5 text-primary-900"><i class="ph-fill ph-users text-8xl"></i></div>
-            <div class="w-14 h-14 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center text-3xl shadow-inner z-10"><i class="ph-fill ph-users-three"></i></div>
-            <div class="z-10">
-                <div class="text-sm text-slate-500 font-semibold mb-1">นักเรียนทั้งหมด</div>
-                <div class="text-2xl font-display font-bold text-slate-800">${totalStudents} <span class="text-sm font-normal text-slate-400">คน</span></div>
-            </div>
-        </div>
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 relative overflow-hidden">
-            <div class="absolute -right-4 -bottom-4 opacity-5 text-green-900"><i class="ph-fill ph-chart-line-up text-8xl"></i></div>
-            <div class="w-14 h-14 rounded-xl bg-green-50 text-green-500 flex items-center justify-center text-3xl shadow-inner z-10"><i class="ph-bold ph-check-square"></i></div>
-            <div class="z-10">
-                <div class="text-sm text-slate-500 font-semibold mb-1">อัตราเข้าเรียนรวม</div>
-                <div class="text-2xl font-display font-bold text-green-600">${overallPct}%</div>
-            </div>
-        </div>
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 relative overflow-hidden">
-            <div class="absolute -right-4 -bottom-4 opacity-5 text-accent"><i class="ph-fill ph-clipboard-text text-8xl"></i></div>
-            <div class="w-14 h-14 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center text-3xl shadow-inner z-10"><i class="ph-fill ph-notebook"></i></div>
-            <div class="z-10">
-                <div class="text-sm text-slate-500 font-semibold mb-1">งาน/กิจกรรม</div>
-                <div class="text-2xl font-display font-bold text-slate-800">${totalHw} <span class="text-sm font-normal text-slate-400">รายการ</span></div>
-            </div>
-        </div>
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 relative overflow-hidden">
-            <div class="absolute -right-4 -bottom-4 opacity-5 text-purple-900"><i class="ph-fill ph-calendar text-8xl"></i></div>
-            <div class="w-14 h-14 rounded-xl bg-purple-50 text-purple-500 flex items-center justify-center text-3xl shadow-inner z-10"><i class="ph-fill ph-calendar-check"></i></div>
-            <div class="z-10">
-                <div class="text-sm text-slate-500 font-semibold mb-1">รอบเช็คชื่อ</div>
-                <div class="text-2xl font-display font-bold text-slate-800">${totalAttSessions} <span class="text-sm font-normal text-slate-400">ครั้ง</span></div>
-            </div>
-        </div>`;
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4"><div class="w-12 h-12 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center text-2xl"><i class="ph-fill ph-users-three"></i></div><div><div class="text-sm text-slate-500 font-semibold mb-1">นักเรียนทั้งหมด</div><div class="text-2xl font-bold">${totalStudents}</div></div></div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4"><div class="w-12 h-12 rounded-xl bg-green-50 text-green-500 flex items-center justify-center text-2xl"><i class="ph-bold ph-check-square"></i></div><div><div class="text-sm text-slate-500 font-semibold mb-1">เข้าเรียนรวม</div><div class="text-2xl font-bold text-green-600">${overallPct}%</div></div></div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4"><div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center text-2xl"><i class="ph-fill ph-notebook"></i></div><div><div class="text-sm text-slate-500 font-semibold mb-1">งาน/กิจกรรม</div><div class="text-2xl font-bold">${totalHw}</div></div></div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4"><div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-500 flex items-center justify-center text-2xl"><i class="ph-fill ph-calendar-check"></i></div><div><div class="text-sm text-slate-500 font-semibold mb-1">รอบเช็คชื่อ</div><div class="text-2xl font-bold">${totalAttSessions}</div></div></div>`;
 
-    // Today's attendance
     const offset = new Date().getTimezoneOffset() * 60000;
     const today = (new Date(Date.now() - offset)).toISOString().split('T')[0];
     const todayKeys = Object.keys(db.attendance).filter(k => k.startsWith(today));
-    const todayEl = document.getElementById('dashTodayAtt');
     
     if (todayKeys.length === 0) {
-        todayEl.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400 py-6">
-            <i class="ph-fill ph-calendar-x text-5xl mb-3 text-slate-200"></i><p>ยังไม่มีการเช็คชื่อสำหรับวันนี้</p>
-        </div>`;
+        document.getElementById('dashTodayAtt').innerHTML = `<div class="text-center text-slate-400 py-6">ยังไม่มีการเช็คชื่อสำหรับวันนี้</div>`;
     } else {
-        let html = '<div class="space-y-3">';
-        todayKeys.forEach(key => {
+        document.getElementById('dashTodayAtt').innerHTML = '<div class="space-y-3">' + todayKeys.map(key => {
             const [d, c, p] = key.split('_');
-            const records = db.attendance[key];
             const counts = { present:0, absent:0, late:0, leave:0 };
-            records.forEach(r => counts[r.status]++);
-            
-            html += `
-            <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div class="font-semibold text-slate-800 flex items-center gap-2">
-                    <div class="w-2 h-2 rounded-full bg-primary-500"></div> ชั้น ${c} <span class="text-xs text-slate-400 font-normal">คาบที่ ${p}</span>
-                </div>
-                <div class="flex gap-3 text-sm">
-                    <span class="text-green-600 font-medium flex items-center gap-1"><i class="ph-bold ph-check"></i> ${counts.present}</span>
-                    <span class="text-red-600 font-medium flex items-center gap-1"><i class="ph-bold ph-x"></i> ${counts.absent}</span>
-                    <span class="text-amber-600 font-medium flex items-center gap-1"><i class="ph-bold ph-clock"></i> ${counts.late}</span>
-                    <span class="text-purple-600 font-medium flex items-center gap-1"><i class="ph-bold ph-clipboard-text"></i> ${counts.leave}</span>
+            db.attendance[key].forEach(r => counts[r.status]++);
+            return `
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center text-sm">
+                <div class="font-semibold text-slate-800">ชั้น ${c} <span class="font-normal text-slate-400 text-xs">คาบ ${p}</span></div>
+                <div class="flex gap-2">
+                    <span class="text-green-600">✅ ${counts.present}</span> <span class="text-red-600">❌ ${counts.absent}</span>
                 </div>
             </div>`;
-        });
-        todayEl.innerHTML = html + '</div>';
+        }).join('') + '</div>';
     }
 
-    // Upcoming homework
     const upcoming = db.homework.filter(h => {
-        const due = new Date(h.due);
-        const now = new Date(Date.now() - offset);
-        now.setHours(0,0,0,0);
-        const diff = (due - now) / 864e5;
+        const diff = (new Date(h.due) - new Date(today)) / 864e5;
         return diff >= -1 && diff <= 7;
     }).sort((a,b) => a.due.localeCompare(b.due));
 
-    const hwEl = document.getElementById('dashUpcomingHw');
     if (!upcoming.length) {
-        hwEl.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400 py-6">
-            <i class="ph-fill ph-check-circle text-5xl mb-3 text-slate-200"></i><p>ไม่มีงานที่กำลังจะถึงกำหนดส่งใน 7 วันนี้</p>
-        </div>`;
+        document.getElementById('dashUpcomingHw').innerHTML = `<div class="text-center text-slate-400 py-6">ไม่มีงานที่ใกล้กำหนดส่ง</div>`;
     } else {
-        hwEl.innerHTML = '<div class="space-y-3">' + upcoming.slice(0, 5).map(h => {
+        document.getElementById('dashUpcomingHw').innerHTML = '<div class="space-y-3">' + upcoming.slice(0, 5).map(h => {
             const due = new Date(h.due);
-            const now = new Date(Date.now() - offset);
-            now.setHours(0,0,0,0);
-            const diff = (due - now) / 864e5;
-            
-            let color = 'text-amber-600 bg-amber-50';
-            if (diff < 0) color = 'text-red-600 bg-red-50';
-            else if (diff > 3) color = 'text-primary-600 bg-primary-50';
-
+            const diff = (due - new Date(today)) / 864e5;
+            let color = diff < 0 ? 'bg-red-50 text-red-600' : diff <= 3 ? 'bg-amber-50 text-amber-600' : 'bg-primary-50 text-primary-600';
             return `
-            <div class="p-3 bg-white border border-slate-200 rounded-xl flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer" onclick="switchTab('homework'); setTimeout(()=>document.getElementById('hwClassFilter').value='${h.cls === 'ทุกชั้น' ? '' : h.cls}',100); renderHomeworkList()">
-                <div class="w-12 h-12 rounded-lg flex-shrink-0 flex flex-col items-center justify-center ${color}">
-                    <div class="text-[10px] font-bold uppercase leading-none mb-1">${due.toLocaleString('th-TH',{month:'short'})}</div>
-                    <div class="text-lg font-bold leading-none">${due.getDate()}</div>
+            <div class="p-3 bg-white border border-slate-200 rounded-xl flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg flex flex-col items-center justify-center ${color} leading-none">
+                    <span class="text-[9px] font-bold">${due.toLocaleString('th-TH',{month:'short'})}</span><span class="font-bold">${due.getDate()}</span>
                 </div>
-                <div class="flex-grow min-w-0">
-                    <div class="font-semibold text-slate-800 truncate">${escapeHTML(h.title)}</div>
-                    <div class="text-xs text-slate-500 mt-1 flex gap-2">
-                        <span><i class="ph-fill ph-users"></i> ${h.cls}</span>
-                        <span>•</span>
-                        <span class="truncate">${h.type}</span>
-                    </div>
-                </div>
+                <div class="flex-grow min-w-0"><div class="font-semibold text-sm truncate">${escapeHTML(h.title)}</div><div class="text-xs text-slate-500">${h.cls}</div></div>
             </div>`;
         }).join('') + '</div>';
     }
@@ -2000,11 +1794,9 @@ function renderDashboard() {
 function exportData() {
     const dataStr = JSON.stringify(db);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    const exportFileDefaultName = `Backup_Attendance_Score_${new Date().toISOString().split('T')[0]}.json`;
-    
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.setAttribute('download', `Backup_Attendance_${new Date().toISOString().split('T')[0]}.json`);
     linkElement.click();
     toast('ดาวน์โหลดไฟล์ Backup เรียบร้อย');
 }
@@ -2013,30 +1805,25 @@ function importData(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    showConfirm('นำเข้าข้อมูล', 'ข้อมูลปัจจุบันทั้งหมดจะถูกแทนที่ด้วยข้อมูลจากไฟล์นี้ ยืนยันการดำเนินการหรือไม่?', () => {
+    showConfirm('นำเข้าข้อมูล', 'ข้อมูลปัจจุบันทั้งหมดจะถูกแทนที่ด้วยข้อมูลจากไฟล์นี้ ยืนยันหรือไม่?', () => {
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
                 const newDb = JSON.parse(e.target.result);
                 if (newDb.students !== undefined && newDb.attendance !== undefined) {
                     db = newDb;
+                    ensureDBStructure();
                     saveDB();
-                    init(); // Re-render everything
+                    init(); 
                     toast('นำเข้าข้อมูลสำเร็จ', 'success');
-                } else {
-                    toast('ไฟล์ข้อมูลไม่ถูกต้อง', 'error');
-                }
-            } catch (err) {
-                toast('เกิดข้อผิดพลาดในการอ่านไฟล์', 'error');
-            }
+                } else { toast('ไฟล์ข้อมูลไม่ถูกต้อง', 'error'); }
+            } catch (err) { toast('เกิดข้อผิดพลาดในการอ่านไฟล์', 'error'); }
         };
         reader.readAsText(file);
     });
-    // Reset input
     event.target.value = '';
 }
 
-// Start Application
 window.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
