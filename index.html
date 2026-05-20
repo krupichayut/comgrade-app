@@ -389,7 +389,7 @@
 
   <!-- ======================== ATTENDANCE PANEL ======================== -->
   <div id="panel-attendance" class="panel hidden space-y-4">
-    <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm no-print">
+    <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm no-print space-y-4">
       <div class="flex flex-wrap items-end gap-4 justify-between">
         <div class="flex flex-wrap gap-4 items-end flex-1">
           <div class="w-full sm:w-40">
@@ -419,6 +419,22 @@
           <button class="flex-1 sm:flex-initial px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/10 transition-colors" onclick="saveAttendance()">
             <i class="ph-bold ph-floppy-disk"></i> บันทึกข้อมูล
           </button>
+        </div>
+      </div>
+
+      <!-- NEW: เกณฑ์เวลากลางประจำหน้าเช็คชื่อ -->
+      <div class="flex flex-wrap items-center gap-4 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+        <div class="flex items-center gap-2">
+          <i class="ph-bold ph-clock text-indigo-600 text-lg"></i>
+          <span class="text-sm font-semibold text-indigo-950">เกณฑ์เวลาและคำนวณเข้าเรียนสายอัตโนมัติ:</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="text-xs font-semibold text-slate-500">เกณฑ์เข้าเรียนสาย</label>
+          <input type="time" id="att_threshold_time" value="08:45" class="px-2 py-1 border rounded-lg text-xs outline-none bg-white font-semibold text-indigo-900 font-mono" onchange="renderAttendanceGrid(false)">
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="checkbox" id="att_auto_calculate" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300" onchange="renderAttendanceGrid(false)">
+          <label for="att_auto_calculate" class="text-xs font-semibold text-slate-600 cursor-pointer">ช่วยเลือก "มาเรียน" หรือ "มาสาย" อัตโนมัติเมื่อกดเลือกสถานะ</label>
         </div>
       </div>
     </div>
@@ -1355,7 +1371,13 @@ function getAttKey() {
   return `${date}_${cls}_${period}`;
 }
 
-// ✅ แก้ไขปัญหาการเช็คชื่อ: แยกการล้างสเตทและการดึงฐานข้อมูลด้วยตัวแปร loadFromDb
+// Helper: ดึงเวลาปัจจุบันในรูปแบบ HH:MM
+function getCurrentTimeStr() {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+}
+
+// ปรับปรุงการวาด Attendance Grid รองรับการลงเวลาเช็คชื่ออิสระและคำนวณสายอัตโนมัติ
 function renderAttendanceGrid(loadFromDb = false) {
   const cls = document.getElementById('att_class').value;
   if (!cls) {
@@ -1373,12 +1395,11 @@ function renderAttendanceGrid(loadFromDb = false) {
 
   const key = getAttKey();
 
-  // โหลดค่าจากฐานข้อมูลเฉพาะกรณีที่กำหนด (เช่น สลับหน้าจอ, สลับห้องเรียน) เพื่อป้องกันการทับค่าชั่วขณะกด
   if (loadFromDb) {
     const savedRecords = db.attendance[key] || [];
     currentAttendance = {};
     savedRecords.forEach(r => {
-      currentAttendance[r.studentId] = { status: r.status, checkTime: r.checkTime || "" };
+      currentAttendance[r.studentId] = { status: r.status, checkTime: r.checkTime || getCurrentTimeStr() };
     });
   }
 
@@ -1396,24 +1417,35 @@ function renderAttendanceGrid(loadFromDb = false) {
   }
 
   grid.innerHTML = students.map(s => {
-    const record = currentAttendance[s.id] || { status: "", checkTime: "" };
+    const record = currentAttendance[s.id] || { status: "", checkTime: getCurrentTimeStr() };
     const status = record.status;
-    const time = record.checkTime;
+    const time = record.checkTime || getCurrentTimeStr();
 
-    let bgStyle = "bg-white border-slate-200";
-    if (status === 'present') bgStyle = "bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/10";
-    if (status === 'absent') bgStyle = "bg-rose-50 border-rose-500 ring-2 ring-rose-500/10";
-    if (status === 'late') bgStyle = "bg-amber-50 border-amber-500 ring-2 ring-amber-500/10";
-    if (status === 'leave') bgStyle = "bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/10";
+    let bgStyle = "bg-white border-slate-200 hover:shadow-md";
+    if (status === 'present') bgStyle = "bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/10 hover:shadow-emerald-500/10";
+    if (status === 'absent') bgStyle = "bg-rose-50 border-rose-500 ring-2 ring-rose-500/10 hover:shadow-rose-500/10";
+    if (status === 'late') bgStyle = "bg-amber-50 border-amber-500 ring-2 ring-amber-500/10 hover:shadow-amber-500/10";
+    if (status === 'leave') bgStyle = "bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/10 hover:shadow-indigo-500/10";
 
     return `
-      <div class="border rounded-2xl p-4 flex flex-col justify-between h-44 shadow-sm transition-all ${bgStyle}">
+      <div class="border rounded-2xl p-4 flex flex-col justify-between h-[180px] shadow-sm transition-all ${bgStyle}">
         <div>
           <div class="flex items-center justify-between text-[11px] text-slate-400 font-semibold mb-1">
             <span>เลขที่ ${s.no}</span>
-            <span class="font-mono text-indigo-950">${time}</span>
+            <div class="flex items-center gap-1">
+              <i class="ph-bold ph-clock text-slate-400"></i>
+              <input type="time" id="time_input_${s.id}" value="${time}" onchange="updateStudentTime(${s.id}, this.value)" class="w-[74px] px-1 py-0.5 rounded border border-slate-200 text-slate-700 focus:border-indigo-500 font-mono text-[11px] outline-none bg-white text-center">
+            </div>
           </div>
-          <h4 class="font-display font-semibold text-slate-800 text-sm line-clamp-2 leading-tight">${s.name}</h4>
+          <h4 class="font-display font-semibold text-slate-800 text-sm line-clamp-1 leading-tight mt-1">${s.name}</h4>
+          
+          <div class="text-[10px] mt-1.5">
+            ${status === 'present' ? '<span class="text-emerald-600 font-bold flex items-center gap-1"><i class="ph-fill ph-check-circle"></i> มาเรียน (ทันเวลา)</span>' : 
+              status === 'late' ? '<span class="text-amber-600 font-bold flex items-center gap-1"><i class="ph-fill ph-clock-afternoon"></i> มาสาย</span>' :
+              status === 'absent' ? '<span class="text-rose-600 font-bold flex items-center gap-1"><i class="ph-fill ph-x-circle"></i> ขาดเรียน</span>' :
+              status === 'leave' ? '<span class="text-indigo-600 font-bold flex items-center gap-1"><i class="ph-fill ph-notepad"></i> ลาเรียน</span>' :
+              '<span class="text-slate-400 font-medium">ยังไม่บันทึก</span>'}
+          </div>
         </div>
         <div class="grid grid-cols-4 gap-1 mt-3">
           <button class="py-2 text-xs font-bold rounded-xl transition-all border ${status === 'present' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200'}" onclick="setStudentStatus(${s.id}, 'present')">มา</button>
@@ -1428,20 +1460,45 @@ function renderAttendanceGrid(loadFromDb = false) {
   updateAttQuickStats(students.length);
 }
 
-function setStudentStatus(studentId, status) {
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mm = String(now.getMinutes()).padStart(2, '0');
-  const checkTime = `${hh}:${mm} น.`;
+// อัปเดตเวลาเช็คชื่อนักเรียนรายบุคคลพร้อมตรวจเกณฑ์สายโดยอัตโนมัติ
+function updateStudentTime(studentId, timeVal) {
+  const currentRecord = currentAttendance[studentId] || { status: 'present' };
+  const currentStatus = currentRecord.status || 'present';
+  
+  currentAttendance[studentId] = { status: currentStatus, checkTime: timeVal };
+  
+  // ตรวจคำนวณตามเกณฑ์สายย่อยเมื่อเปิดฟีเจอร์ช่วยคำนวณ (และไม่ได้เลือกขาดหรือลาอยู่ก่อนหน้า)
+  if (document.getElementById('att_auto_calculate').checked && currentStatus !== 'leave' && currentStatus !== 'absent') {
+    const threshold = document.getElementById('att_threshold_time').value;
+    if (threshold) {
+      if (timeVal <= threshold) {
+        currentAttendance[studentId].status = 'present';
+      } else {
+        currentAttendance[studentId].status = 'late';
+      }
+    }
+  }
+  renderAttendanceGrid(false);
+}
 
+function setStudentStatus(studentId, status) {
+  const timeVal = document.getElementById(`time_input_${studentId}`)?.value || getCurrentTimeStr();
+  
   if (currentAttendance[studentId] && currentAttendance[studentId].status === status) {
-    // ยกเลิกการเลือกหากกดย้ำปุ่มเดิม
+    // ยกเลิกสถานะหากคลิกซ้ำปุ่มเดิม
     delete currentAttendance[studentId];
   } else {
-    currentAttendance[studentId] = { status, checkTime };
+    let finalStatus = status;
+    // หากเปิดโหมดคำนวณสายอัตโนมัติ และครูกดปุ่ม "มา" หรือ "สาย" ระบบจะตรวจสอบเวลาเทียบเกณฑ์ทันที
+    if (document.getElementById('att_auto_calculate').checked && (status === 'present' || status === 'late')) {
+      const threshold = document.getElementById('att_threshold_time').value;
+      if (threshold) {
+        finalStatus = timeVal <= threshold ? 'present' : 'late';
+      }
+    }
+    currentAttendance[studentId] = { status: finalStatus, checkTime: timeVal };
   }
   
-  // เรียกวาดหน้าจอใหม่แบบห้ามเขียนทับข้อมูล (loadFromDb = false)
   renderAttendanceGrid(false);
 }
 
@@ -1487,10 +1544,17 @@ function markAllPresent() {
   const students = db.students.filter(s => s.cls === cls);
   
   const now = new Date();
-  const checkTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} น.`;
+  const checkTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
   students.forEach(s => {
-    currentAttendance[s.id] = { status: 'present', checkTime };
+    let finalStatus = 'present';
+    if (document.getElementById('att_auto_calculate').checked) {
+      const threshold = document.getElementById('att_threshold_time').value;
+      if (threshold) {
+        finalStatus = checkTime <= threshold ? 'present' : 'late';
+      }
+    }
+    currentAttendance[s.id] = { status: finalStatus, checkTime };
   });
   renderAttendanceGrid(false);
 }
@@ -1511,7 +1575,7 @@ function saveAttendance() {
   pushToCloud();
   toast("บันทึกการลงเวลาเช็คชื่อวันนี้สำเร็จเรียบร้อย ✅");
   renderDashboard();
-  renderAttendanceGrid(true); // ดึงข้อมูลล่าสุดหลังบันทึกเพื่อยืนยันสเตท
+  renderAttendanceGrid(true); 
 }
 
 // ==================== HOMEWORK ASSIGNMENT ====================
@@ -2201,7 +2265,7 @@ function showStudentDetail(studentId) {
               <div class="p-3 flex items-center justify-between text-xs">
                 <span class="font-semibold text-slate-600">${formatThaiDate(h.date)} คาบที่ ${h.period}</span>
                 <div class="flex items-center gap-2">
-                  <span class="font-mono text-slate-400">${h.checkTime}</span>
+                  <span class="font-mono text-slate-400">${h.checkTime} น.</span>
                   <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge[h.status]}">${statusLabel[h.status]}</span>
                 </div>
               </div>
