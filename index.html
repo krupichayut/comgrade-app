@@ -394,15 +394,15 @@
         <div class="flex flex-wrap gap-4 items-end flex-1">
           <div class="w-full sm:w-40">
             <label class="block text-xs font-semibold text-slate-500 mb-1 uppercase">วันที่ทำรายการ</label>
-            <input type="date" id="att_date" class="w-full px-3 py-2 border rounded-xl outline-none text-sm" onchange="renderAttendanceGrid()">
+            <input type="date" id="att_date" class="w-full px-3 py-2 border rounded-xl outline-none text-sm" onchange="renderAttendanceGrid(true)">
           </div>
           <div class="w-full sm:w-36">
             <label class="block text-xs font-semibold text-slate-500 mb-1 uppercase">ชั้นเรียน</label>
-            <select id="att_class" class="w-full px-3 py-2 border rounded-xl outline-none text-sm bg-white" onchange="renderAttendanceGrid()"></select>
+            <select id="att_class" class="w-full px-3 py-2 border rounded-xl outline-none text-sm bg-white" onchange="renderAttendanceGrid(true)"></select>
           </div>
           <div class="w-full sm:w-56">
             <label class="block text-xs font-semibold text-slate-500 mb-1 uppercase">คาบเรียน/เวลาเรียน</label>
-            <select id="att_period" class="w-full px-3 py-2 border rounded-xl outline-none text-sm bg-white" onchange="renderAttendanceGrid()">
+            <select id="att_period" class="w-full px-3 py-2 border rounded-xl outline-none text-sm bg-white" onchange="renderAttendanceGrid(true)">
               <option value="1">คาบที่ 1 (08:30-09:30)</option>
               <option value="2">คาบที่ 2 (09:30-10:30)</option>
               <option value="3">คาบที่ 3 (10:30-11:30)</option>
@@ -638,7 +638,6 @@
 
 <script>
 // ==================== CONFIGURATION & STATE ====================
-// ข้อมูลเชื่อมต่อกับ Supabase ที่คุณครูส่งมา ถูกเติมลงไปตรงนี้ให้เรียบร้อยแล้วครับ!
 let supabaseUrl = localStorage.getItem('supabase_url') || "https://tvrktegmzqcoruhekuby.supabase.co";
 let supabaseKey = localStorage.getItem('supabase_key') || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2cmt0ZWdtenFjb3J1aGVrdWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMjA2MTUsImV4cCI6MjA5NDc5NjYxNX0.y4E6A3daSuWKggkNzjzJoniAdbzDZicgaAmNyKgtbv8";
 let supabaseAppId = localStorage.getItem('supabase_appid') || "com_primary_attendance";
@@ -660,9 +659,11 @@ let db = {
 // State for custom confirmation callback
 let confirmCallback = null;
 
+// Temporary state mapping of currently clicked items on screen: studentId => {status, checkTime}
+let currentAttendance = {};
+
 // ==================== INITIALIZATION ====================
 window.addEventListener('DOMContentLoaded', async () => {
-  // บันทึกคีย์ลงใน LocalStorage ของหน้าเบราว์เซอร์อัตโนมัติเพื่อให้เก็บรหัสไว้ได้นานที่สุด
   localStorage.setItem('supabase_url', supabaseUrl);
   localStorage.setItem('supabase_key', supabaseKey);
   localStorage.setItem('supabase_appid', supabaseAppId);
@@ -684,16 +685,16 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('sc_key').value = supabaseKey;
   document.getElementById('sc_appid').value = supabaseAppId;
 
-  // โหลดข้อมูลใน LocalStorage เก็บเป็นฐานข้อมูลสํารอง/เริ่มต้น
+  // โหลดข้อมูลใน LocalStorage เก็บเป็นฐานข้อมูลเริ่มต้น
   loadLocalBackup();
   
-  // ทํารายการอัปเดตระบบจัดห้องและตารางทั้งหมดเบื้องต้น
+  // อัปเดตตารางตัวเลือกและแถบเช็คชื่อเริ่มต้น
   updateClassSelects();
 
-  // พยายามล็อกอินเข้าเซิร์ฟเวอร์ Supabase
+  // พยายามเชื่อมต่อเซิร์ฟเวอร์ Supabase
   await initSupabase();
 
-  // แสดงผล UI
+  // แสดงผล UI หน้าแรก
   renderDashboard();
   renderStudentTable();
   renderHomeworkList();
@@ -718,14 +719,14 @@ async function initSupabase() {
   
   if (!supabaseUrl || !supabaseKey) {
     updateSyncBadge('local');
-    toast("ทํางานในโหมดจัดเก็บข้อมูลในเครื่อง (ยังไม่ได้ต่อคลาวด์)", "info");
+    toast("ทำงานในโหมดจัดเก็บข้อมูลในเครื่อง (ออฟไลน์)", "info");
     return;
   }
 
   try {
     supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
     
-    // ตรวจสอบการทํางานของ Supabase โดยดึงข้อมูลตัวอย่าง (หรือลอง Select ดูว่าตารางพร้อมรันไหม)
+    // ตรวจสอบการทำงานของตาราง
     const { data, error } = await supabaseClient
       .from('computer_attendance')
       .select('id')
@@ -735,15 +736,15 @@ async function initSupabase() {
 
     isConnected = true;
     updateSyncBadge('synced');
-    toast("เชื่อมต่อฐานข้อมูล Supabase Cloud สําเร็จ ☁️", "success");
+    toast("เชื่อมต่อฐานข้อมูล Supabase Cloud สำเร็จ ☁️", "success");
     
-    // หลังจากเชื่อมต่อคลาวด์ได้ ดึงข้อมูลล่าสุดลงมารวมกับบนเครื่อง
+    // ดึงข้อมูลล่าสุดลงมารวมกับบนเครื่อง
     await fetchFromCloud();
   } catch (error) {
     console.error("Supabase Connection Fail: ", error);
     isConnected = false;
     updateSyncBadge('offline');
-    toast("ไม่สามารถติดต่อเซิร์ฟเวอร์คลาวด์ได้ สลับเป็นโหมดออฟไลน์แล้ว", "error");
+    toast("สลับเป็นโหมดออฟไลน์ชั่วคราว เนื่องจากติดต่อฐานข้อมูลไม่ได้", "error");
   }
 }
 
@@ -756,7 +757,7 @@ function updateSyncBadge(status) {
 
   if (status === 'connecting') {
     dot.className = "w-2.5 h-2.5 rounded-full inline-block bg-amber-400 animate-pulse";
-    label.textContent = "กําลังซิงค์ข้อมูล...";
+    label.textContent = "กำลังซิงค์ข้อมูล...";
     btn.classList.add("bg-amber-50", "text-amber-800", "border", "border-amber-200");
   } else if (status === 'synced') {
     dot.className = "w-2.5 h-2.5 rounded-full inline-block bg-emerald-500";
@@ -786,17 +787,16 @@ async function fetchFromCloud() {
 
     if (error) {
       if (error.code === 'PGRST116') {
-        // ไม่มีข้อมูลแอปนี้บนเซิร์ฟเวอร์ ให้เริ่มอัปโหลดชุดข้อมูลที่มีอยู่ขึ้นทันที
+        // ไม่มีข้อมูลแอปนี้ ให้เริ่มอัปโหลดชุดข้อมูลที่มีอยู่ขึ้นทันที
         await pushToCloud();
       } else {
         throw error;
       }
     } else if (data && data.data) {
-      // เอาข้อมูลจากคลาวด์มาทับและบันทึกลงถังออฟไลน์ในเบราว์เซอร์ด้วย
       db = data.data;
-      saveLocalBackup(false); // บันทึกลงเครื่องแบบเงียบๆ ไม่ต้องแสดง Toast อีกซ้อน
+      saveLocalBackup(false); 
       updateClassSelects();
-      toast("ดาวน์โหลดแฟ้มข้อมูลจากฐานข้อมูลคลาวด์สําเร็จ ✅", "success");
+      toast("ดาวน์โหลดแฟ้มข้อมูลจากคลาวด์สำเร็จ ✅", "success");
     }
   } catch (error) {
     console.error("Fetch Cloud Error:", error);
@@ -806,7 +806,7 @@ async function fetchFromCloud() {
 
 // อัปโหลดข้อมูลล่าสุดขึ้นคลาวด์ (Auto-push)
 async function pushToCloud() {
-  saveLocalBackup(false); // บันทึกลง LocalStorage ออฟไลน์ไว้เสมอเป็นเกราะป้องกันชั้นแรก
+  saveLocalBackup(false); 
 
   if (!isConnected || !supabaseClient) return;
 
@@ -823,27 +823,26 @@ async function pushToCloud() {
   } catch (error) {
     console.error("Push to Cloud Fail:", error);
     updateSyncBadge('offline');
-    toast("เซิร์ฟเวอร์ขาดการติดต่อชั่วคราว ข้อมูลบันทึกไว้ในเครื่องเรียบร้อยแล้ว", "info");
+    toast("บันทึกข้อมูลแบบออฟไลน์เรียบร้อยแล้ว", "info");
   }
 }
 
-// บันทึกเก็บออฟไลน์ในเครื่อง (Fallback LocalStorage)
+// บันทึกเก็บออฟไลน์ในเครื่อง
 function saveLocalBackup(showToast = true) {
   try {
     localStorage.setItem('computer_att_db', JSON.stringify(db));
-    if (showToast) toast("บันทึกข้อมูลย้อนหลังลงเครื่องสําเร็จ", "success");
+    if (showToast) toast("บันทึกข้อมูลย้อนหลังลงเครื่องสำเร็จ");
   } catch (e) {
     console.error("Local Save Fail", e);
   }
 }
 
-// โหลดข้อมูลสํารองบนเครื่อง
+// โหลดข้อมูลสำรองบนเครื่อง
 function loadLocalBackup() {
   try {
     const localData = localStorage.getItem('computer_att_db');
     if (localData) {
       db = JSON.parse(localData);
-      // ตรวจสอบความสมบูรณ์ของคีย์ที่จําเป็น
       if (!db.classes) db.classes = ["ป.1/1", "ป.2/1", "ป.3/1", "ป.4/1", "ป.5/1", "ป.6/1"];
       if (!db.students) db.students = [];
       if (!db.attendance) db.attendance = {};
@@ -857,14 +856,14 @@ function loadLocalBackup() {
   }
 }
 
-// บันทึกและตั้งค่า Supabase Config ด้วยตนเองใน Modal
+// บันทึกและตั้งค่า Supabase Config
 async function saveSupabaseConfig() {
   const url = document.getElementById('sc_url').value.trim();
   const key = document.getElementById('sc_key').value.trim();
   const appid = document.getElementById('sc_appid').value.trim() || "com_primary_attendance";
 
   if (!url || !key) {
-    toast("กรุณากรอกทั้ง URL และ API Key ของท่านเพื่อใช้งานระบบออนไลน์", "error");
+    toast("กรุณากรอกทั้ง URL และ API Key เพื่อเชื่อมต่อใช้งาน", "error");
     return;
   }
 
@@ -877,7 +876,7 @@ async function saveSupabaseConfig() {
   localStorage.setItem('supabase_appid', appid);
 
   closeModal('supabaseModal');
-  toast("กําลังทำการรีสตาร์ทเพื่อเชื่อมโยงคลาวด์...", "info");
+  toast("กำลังทำการซิงค์ระบบคลาวด์...", "info");
   await initSupabase();
   
   renderDashboard();
@@ -887,7 +886,7 @@ async function saveSupabaseConfig() {
 }
 
 function clearSupabaseConfig() {
-  showConfirm("ยืนยันการยกเลิกเชื่อมต่อ", "ต้องการลบกุญแจ API คลาวด์ออกหรือไม่? ระบบจะกลับสู่การทํางานบนเครื่องออฟไลน์แทน", () => {
+  showConfirm("ยืนยันการยกเลิกเชื่อมต่อ", "ต้องการลบ API คลาวด์ออกหรือไม่? ระบบจะทำงานบนเครื่องออฟไลน์แทน", () => {
     localStorage.removeItem('supabase_url');
     localStorage.removeItem('supabase_key');
     localStorage.removeItem('supabase_appid');
@@ -904,20 +903,18 @@ function clearSupabaseConfig() {
 
     updateSyncBadge('local');
     closeModal('supabaseModal');
-    toast("ยกเลิกเชื่อมต่อเสร็จสมบูรณ์", "info");
+    toast("ยกเลิกการเชื่อมต่อเรียบร้อย", "info");
   });
 }
 
 // ==================== PANEL NAVIGATION ====================
 function showPanel(name, tabButton) {
-  // ซ่อนแผงทั้งหมด
   document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
   document.querySelectorAll('.nav-tab').forEach(t => {
     t.classList.remove('active', 'bg-white/10', 'text-white');
     t.classList.add('text-indigo-100');
   });
 
-  // เปิดแผงที่เลือก
   const activePanel = document.getElementById('panel-' + name);
   if (activePanel) activePanel.classList.remove('hidden');
   
@@ -925,9 +922,9 @@ function showPanel(name, tabButton) {
     tabButton.classList.add('active', 'bg-white/10', 'text-white');
   }
 
-  // รีเฟรชข้อมูลตามแท็บที่เปิด
+  // รีเฟรชข้อมูลตามแท็บที่เปิด (ดึงประวัติมาแสดงใหม่จากฐานข้อมูล)
   if (name === 'dashboard') renderDashboard();
-  if (name === 'attendance') renderAttendanceGrid();
+  if (name === 'attendance') renderAttendanceGrid(true); 
   if (name === 'students') renderStudentTable();
   if (name === 'scores') { updateHwSelect(); renderScoreTable(); renderScoreSummary(); }
   if (name === 'homework') renderHomeworkList();
@@ -942,6 +939,7 @@ function showInnerTab(tabId, tabButton) {
   });
 
   const parent = container.parentElement;
+  parent.querySelectorAll('.inner-panel').forEach(p => p.hidden = true);
   parent.querySelectorAll('.inner-panel').forEach(p => p.classList.add('hidden'));
 
   tabButton.classList.add('active', 'border-indigo-600', 'text-indigo-600');
@@ -993,7 +991,7 @@ function toast(msg, type = 'success') {
   }, 3500);
 }
 
-// Custom confirmation box replacing standard window.confirm
+// ยืนยันการทำรายการ (Confirm dialog)
 function showConfirm(title, message, callback) {
   document.getElementById('confirmTitle').textContent = title;
   document.getElementById('confirmMessage').textContent = message;
@@ -1014,8 +1012,6 @@ function closeConfirm(isConfirmed) {
 // ==================== DROPDOWN UPDATES ====================
 function updateClassSelects() {
   const selects = ['att_class', 'sm_class', 'bulk_class', 'hw_class', 'sc_class', 'sum_class', 'rep_class', 'studentClassFilter', 'hwClassFilter'];
-  
-  // Sort classes logically (thai letters & digits)
   db.classes.sort((a, b) => a.localeCompare(b, 'th', { numeric: true }));
 
   selects.forEach(id => {
@@ -1025,7 +1021,6 @@ function updateClassSelects() {
     const prevValue = el.value;
     el.innerHTML = '';
     
-    // Add default blank option for filter dropdowns
     if (id === 'studentClassFilter' || id === 'hwClassFilter' || id === 'rep_class' || id === 'sum_class') {
       const opt = document.createElement('option');
       opt.value = "";
@@ -1047,14 +1042,13 @@ function updateClassSelects() {
       el.appendChild(opt);
     });
 
-    // Restore user selection if possible
     if (prevValue && Array.from(el.options).some(o => o.value === prevValue)) {
       el.value = prevValue;
     }
   });
 }
 
-// ==================== ROOM CLASSROOM MANAGER ====================
+// ==================== CLASSROOM MANAGER ====================
 function addClass() {
   const nameInput = document.getElementById('newClassName');
   const name = nameInput.value.trim();
@@ -1065,7 +1059,7 @@ function addClass() {
   }
   
   if (db.classes.includes(name)) {
-    toast("ชั้นเรียนนี้ถูกจารึกไว้ในฐานข้อมูลอยู่แล้ว", "error");
+    toast("ชั้นเรียนนี้มีอยู่ในระบบแล้ว", "error");
     return;
   }
 
@@ -1074,22 +1068,19 @@ function addClass() {
   updateClassSelects();
   renderClassManagerList();
   pushToCloud();
-  toast(`เพิ่มห้องเรียน ${name} เรียบร้อยแล้ว`, "success");
+  toast(`เพิ่มห้องเรียน ${name} เรียบร้อยแล้ว`);
 }
 
 function removeClass(className) {
-  // Check if class has students assigned
   const inUse = db.students.some(s => s.cls === className);
-  
   let msg = `คุณต้องการลบห้องเรียน "${className}" หรือไม่?`;
+  
   if (inUse) {
-    msg = `⚠️ คำเตือน! ชั้นเรียน "${className}" กำลังมีข้อมูลนักเรียนอยู่ภายใน หากคุณยังต้องการลบห้อง ข้อมูลนักเรียนทั้งหมดในห้องนี้จะสูญเสียการระบุชั้นเรียน`;
+    msg = `⚠️ คำเตือน! ชั้นเรียน "${className}" กำลังมีข้อมูลนักเรียนอยู่ภายใน หากยืนยันที่จะลบ ห้องเรียนของนักเรียนเหล่านั้นจะกลายเป็นค่าว่าง`;
   }
 
   showConfirm("ยืนยันการลบห้องเรียน", msg, () => {
     db.classes = db.classes.filter(c => c !== className);
-    
-    // Clean students link
     if (inUse) {
       db.students.forEach(s => {
         if (s.cls === className) s.cls = "";
@@ -1109,7 +1100,7 @@ function renderClassManagerList() {
   db.classes.sort((a, b) => a.localeCompare(b, 'th', { numeric: true }));
 
   if (db.classes.length === 0) {
-    container.innerHTML = `<div class="p-6 text-center text-slate-400 text-sm">ยังไม่มีชั้นเรียนในฐานข้อมูล</div>`;
+    container.innerHTML = `<div class="p-6 text-center text-slate-400 text-sm">ยังไม่มีชั้นเรียนในระบบ</div>`;
     return;
   }
 
@@ -1130,7 +1121,7 @@ function renderClassManagerList() {
   }).join('');
 }
 
-// Override open modal to trigger custom list rendering
+// Override open modal to load classroom lists
 const originalOpenModal = openModal;
 openModal = function(id) {
   originalOpenModal(id);
@@ -1202,8 +1193,6 @@ function deleteStudent(id) {
   
   showConfirm("ยืนยันการลบนักเรียน", `คุณมั่นใจหรือไม่ที่จะลบข้อมูลและประวัติการส่งงานทั้งหมดของ "${studentName}"?`, () => {
     db.students = db.students.filter(x => x.id !== id);
-    
-    // Clean student's score entries
     for (const key in db.scores) {
       if (key.endsWith(`_${id}`)) delete db.scores[key];
     }
@@ -1239,7 +1228,6 @@ function renderStudentTable() {
     return matchSearch && matchClass;
   });
 
-  // Sort students: class first, then number
   filtered.sort((a, b) => {
     const roomComp = a.cls.localeCompare(b.cls, 'th', { numeric: true });
     if (roomComp !== 0) return roomComp;
@@ -1252,7 +1240,7 @@ function renderStudentTable() {
       <tr>
         <td colspan="9" class="py-12 text-center text-slate-400">
           <i class="ph-bold ph-users-three text-4xl mb-2 block"></i>
-          ไม่พบรายชื่อนักเรียนตามค่าพารามิเตอร์ที่คุณค้นหา
+          ไม่พบรายชื่อนักเรียนในห้องเรียนนี้
         </td>
       </tr>
     `;
@@ -1321,7 +1309,6 @@ function processBulkImport() {
   const lines = rawText.split('\n').map(l => l.trim()).filter(l => l !== "");
   let successCount = 0;
 
-  // ค้นหาเลขที่ปัจจุบันที่สูงที่สุดในห้องนี้ เพื่อปูทางนำไปใช้รันต่อ
   const existingInClass = db.students.filter(s => s.cls === targetClass);
   let autoNo = existingInClass.length > 0 ? Math.max(...existingInClass.map(s => s.no)) + 1 : 1;
 
@@ -1329,7 +1316,6 @@ function processBulkImport() {
     let cleanName = line;
     let number = autoNo;
 
-    // 1. วิเคราะห์เพื่อสกัดเลขทีดั้งเดิม (ถ้ามี เช่น "1. ด.ช.แดง" หรือ "1 ด.ช.แดง")
     const numRegex = /^(\d+)\s*[\.\-\/\s]+\s*(.+)$/;
     const match = line.match(numRegex);
     if (match) {
@@ -1339,8 +1325,7 @@ function processBulkImport() {
       autoNo++;
     }
 
-    // 2. วิเคราะห์ประเมินเพศตามคีย์คำนำหน้าชื่อไทย
-    let gender = "ชาย"; // Default
+    let gender = "ชาย"; 
     if (cleanName.includes("ด.ญ.") || cleanName.includes("เด็กหญิง") || cleanName.includes("น.ส.") || cleanName.includes("นางสาว") || cleanName.includes("ด.ญ")) {
       gender = "หญิง";
     }
@@ -1363,8 +1348,6 @@ function processBulkImport() {
 }
 
 // ==================== ATTENDANCE CHECKS SYSTEM ====================
-let currentAttendance = {}; // Temporary mapping of state: studentId => {status, checkTime}
-
 function getAttKey() {
   const date = document.getElementById('att_date').value;
   const cls = document.getElementById('att_class').value;
@@ -1372,7 +1355,8 @@ function getAttKey() {
   return `${date}_${cls}_${period}`;
 }
 
-function renderAttendanceGrid() {
+// ✅ แก้ไขปัญหาการเช็คชื่อ: แยกการล้างสเตทและการดึงฐานข้อมูลด้วยตัวแปร loadFromDb
+function renderAttendanceGrid(loadFromDb = false) {
   const cls = document.getElementById('att_class').value;
   if (!cls) {
     document.getElementById('attGrid').innerHTML = `
@@ -1388,13 +1372,15 @@ function renderAttendanceGrid() {
   students.sort((a, b) => a.no - b.no);
 
   const key = getAttKey();
-  const savedRecords = db.attendance[key] || [];
 
-  // Reset state
-  currentAttendance = {};
-  savedRecords.forEach(r => {
-    currentAttendance[r.studentId] = { status: r.status, checkTime: r.checkTime || "" };
-  });
+  // โหลดค่าจากฐานข้อมูลเฉพาะกรณีที่กำหนด (เช่น สลับหน้าจอ, สลับห้องเรียน) เพื่อป้องกันการทับค่าชั่วขณะกด
+  if (loadFromDb) {
+    const savedRecords = db.attendance[key] || [];
+    currentAttendance = {};
+    savedRecords.forEach(r => {
+      currentAttendance[r.studentId] = { status: r.status, checkTime: r.checkTime || "" };
+    });
+  }
 
   const grid = document.getElementById('attGrid');
   if (students.length === 0) {
@@ -1425,7 +1411,7 @@ function renderAttendanceGrid() {
         <div>
           <div class="flex items-center justify-between text-[11px] text-slate-400 font-semibold mb-1">
             <span>เลขที่ ${s.no}</span>
-            <span class="font-mono text-indigo-900">${time}</span>
+            <span class="font-mono text-indigo-950">${time}</span>
           </div>
           <h4 class="font-display font-semibold text-slate-800 text-sm line-clamp-2 leading-tight">${s.name}</h4>
         </div>
@@ -1443,19 +1429,20 @@ function renderAttendanceGrid() {
 }
 
 function setStudentStatus(studentId, status) {
-  // บันทึกเวลาปัจจุบันที่กดเช็คชื่อ (เช่น 08:31 น.) เพื่อตอบโจทย์ประวัติเวลาเข้าเรียน
   const now = new Date();
   const hh = String(now.getHours()).padStart(2, '0');
   const mm = String(now.getMinutes()).padStart(2, '0');
   const checkTime = `${hh}:${mm} น.`;
 
   if (currentAttendance[studentId] && currentAttendance[studentId].status === status) {
-    // ดับเบิลคลิกสไลด์เดิม ล้างสถานะ
+    // ยกเลิกการเลือกหากกดย้ำปุ่มเดิม
     delete currentAttendance[studentId];
   } else {
     currentAttendance[studentId] = { status, checkTime };
   }
-  renderAttendanceGrid();
+  
+  // เรียกวาดหน้าจอใหม่แบบห้ามเขียนทับข้อมูล (loadFromDb = false)
+  renderAttendanceGrid(false);
 }
 
 function updateAttQuickStats(total) {
@@ -1505,7 +1492,7 @@ function markAllPresent() {
   students.forEach(s => {
     currentAttendance[s.id] = { status: 'present', checkTime };
   });
-  renderAttendanceGrid();
+  renderAttendanceGrid(false);
 }
 
 function saveAttendance() {
@@ -1524,6 +1511,7 @@ function saveAttendance() {
   pushToCloud();
   toast("บันทึกการลงเวลาเช็คชื่อวันนี้สำเร็จเรียบร้อย ✅");
   renderDashboard();
+  renderAttendanceGrid(true); // ดึงข้อมูลล่าสุดหลังบันทึกเพื่อยืนยันสเตท
 }
 
 // ==================== HOMEWORK ASSIGNMENT ====================
@@ -1589,10 +1577,8 @@ function saveHomework() {
 }
 
 function deleteHw(id) {
-  showConfirm("ยืนยันการลบกิจกรรมส่งงาน", "การลบหัวข้องานจะทําให้ตารางประวัติส่งคะแนนของเด็กๆ หายไปด้วย คุณยังยืนยันที่จะลบหัวข้องานนี้หรือไม่?", () => {
+  showConfirm("ยืนยันการลบกิจกรรมส่งงาน", "การลบหัวข้องานจะทำให้ตารางคะแนนประวัติส่งงานของนักเรียนทุกคนสูญหาย คุณยังต้องการลบหัวข้องานนี้หรือไม่?", () => {
     db.homework = db.homework.filter(h => h.id !== id);
-    
-    // Clean scores associated
     for (const key in db.scores) {
       if (key.startsWith(`${id}_`)) delete db.scores[key];
     }
@@ -1644,10 +1630,9 @@ function renderHomeworkList() {
     const deadlineBadge = isOverdue
       ? `<span class="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold rounded">เลยกำหนดส่ง</span>`
       : isDueSoon
-      ? `<span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded">ใกล้ครบกําหนด</span>`
+      ? `<span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded">ใกล้ครบกำหนด</span>`
       : '';
 
-    // Count score records count for this hw
     const scoreCount = Object.keys(db.scores).filter(k => k.startsWith(`${h.id}_`)).length;
 
     return `
@@ -1731,7 +1716,6 @@ function renderScoreTable() {
     const score = db.scores[key];
     const scoreVal = (score !== undefined && score !== null) ? score : '';
     
-    // คำนวณร้อยละป้องกันกรณีคะแนนเต็มเป็น 0 (NaN)
     let percentText = "-";
     let grade = { text: "-", class: "" };
     
@@ -1906,7 +1890,7 @@ function renderScoreSummary() {
     container.innerHTML = `
       <div class="py-12 text-center text-slate-400 bg-white border rounded-2xl p-8">
         <i class="ph-bold ph-chart-bar-horizontal text-4xl mb-2 block"></i>
-        ไม่พบข้อมูลชั้นเรียนและคะแนนสำหรับสรุปประเมินผลการเรียน
+        ไม่พบข้อมูลชั้นเรียนและคะแนนสำหรับประเมินผล
       </div>
     `;
   }
@@ -1918,7 +1902,6 @@ function renderReport() {
   const to = document.getElementById('rep_to').value;
   const cls = document.getElementById('rep_class').value;
 
-  // กรองคีย์วันที่เข้าเงื่อนไขตามช่วงและห้องเรียน
   const relevantKeys = Object.keys(db.attendance).filter(key => {
     const [date, room] = key.split('_');
     const matchDate = date >= from && date <= to;
@@ -1930,7 +1913,7 @@ function renderReport() {
   relevantKeys.forEach(key => {
     db.attendance[key].forEach(r => {
       if (!studentStats[r.studentId]) {
-        studentStats[r.studentId] = { present: 0, absent: 0, late: 0, leave: 0 };
+        studentStats[r.studentId] = { present: 0, absent: 0, text: 0, late: 0, leave: 0 };
       }
       studentStats[r.studentId][r.status]++;
     });
@@ -1946,10 +1929,10 @@ function renderReport() {
   let totalP = 0, totalA = 0, totalL = 0, totalLv = 0;
   students.forEach(s => {
     const st = studentStats[s.id] || { present: 0, absent: 0, late: 0, leave: 0 };
-    totalP += st.present;
-    totalA += st.absent;
-    totalL += st.late;
-    totalLv += st.leave;
+    totalP += st.present || 0;
+    totalA += st.absent || 0;
+    totalL += st.late || 0;
+    totalLv += st.leave || 0;
   });
 
   const totalActions = totalP + totalA + totalL + totalLv;
@@ -1957,8 +1940,8 @@ function renderReport() {
 
   const rows = students.map(s => {
     const st = studentStats[s.id] || { present: 0, absent: 0, late: 0, leave: 0 };
-    const grand = st.present + st.absent + st.late + st.leave;
-    const pct = grand > 0 ? Math.round(((st.present + st.late) / grand) * 100) : 100;
+    const grand = (st.present || 0) + (st.absent || 0) + (st.late || 0) + (st.leave || 0);
+    const pct = grand > 0 ? Math.round((((st.present || 0) + (st.late || 0)) / grand) * 100) : 100;
     
     const warningStyle = pct < 80 && grand > 0 ? "bg-rose-50/50 hover:bg-rose-100/30" : "hover:bg-slate-50";
 
@@ -1970,10 +1953,10 @@ function renderReport() {
           ${pct < 80 && grand > 0 ? `<span class="ml-1.5 px-1.5 py-0.5 bg-rose-100 text-rose-800 text-[9px] font-bold rounded">เสี่ยงเวลาเรียน</span>` : ''}
         </td>
         <td class="py-3 px-4 text-center"><span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg">${s.cls}</span></td>
-        <td class="py-3 px-4 text-center font-bold text-emerald-600">${st.present}</td>
-        <td class="py-3 px-4 text-center font-bold text-rose-500">${st.absent}</td>
-        <td class="py-3 px-4 text-center font-bold text-amber-500">${st.late}</td>
-        <td class="py-3 px-4 text-center font-bold text-indigo-600">${st.leave}</td>
+        <td class="py-3 px-4 text-center font-bold text-emerald-600">${st.present || 0}</td>
+        <td class="py-3 px-4 text-center font-bold text-rose-500">${st.absent || 0}</td>
+        <td class="py-3 px-4 text-center font-bold text-amber-500">${st.late || 0}</td>
+        <td class="py-3 px-4 text-center font-bold text-indigo-600">${st.leave || 0}</td>
         <td class="py-3 px-4 text-center font-bold text-slate-600">${grand}</td>
         <td class="py-3 px-4 text-center">
           <div class="flex items-center gap-2 justify-center">
@@ -1988,7 +1971,6 @@ function renderReport() {
   }).join('');
 
   document.getElementById('reportContent').innerHTML = `
-    <!-- Top summary panel -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div class="bg-white border p-4 rounded-2xl shadow-sm flex items-center gap-3">
         <span class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl"><i class="ph-bold ph-check"></i></span>
@@ -2014,16 +1996,15 @@ function renderReport() {
       <div class="bg-white border p-4 rounded-2xl shadow-sm flex items-center gap-3">
         <span class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl"><i class="ph-bold ph-calendar-check"></i></span>
         <div class="flex flex-col">
-          <span class="text-[10px] text-slate-400 font-bold uppercase">อัตราการเข้าเรียนรวม</span>
+          <span class="text-[10px] text-slate-400 font-bold uppercase">อัตราเวลาเรียนรวม</span>
           <span class="text-xl font-bold font-display text-indigo-700">${attendanceRate}%</span>
         </div>
       </div>
     </div>
 
-    <!-- Stats Table Card -->
     <div class="bg-white border rounded-2xl shadow-sm overflow-hidden">
       <div class="p-5 border-b bg-indigo-50/10">
-        <h4 class="font-display font-bold text-indigo-950 text-base">📅 บันทึกผลการเข้าเรียนสะสม ${from ? formatThaiDate(from) + ' ถึง ' + formatThaiDate(to) : ''}</h4>
+        <h4 class="font-display font-bold text-indigo-950 text-base">📅 บันทึกเวลาเรียนสะสม ${from ? formatThaiDate(from) + ' ถึง ' + formatThaiDate(to) : ''}</h4>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse text-sm">
@@ -2098,7 +2079,7 @@ function renderClassReport() {
   if (container.children.length === 0) {
     container.innerHTML = `
       <div class="col-span-full py-16 text-center text-slate-400 bg-white border rounded-2xl p-8">
-        ไม่มีห้องเรียนหรือสถิติการเช็คชื่อรายห้องเรียนในปัจจุบัน
+        ไม่มีห้องเรียนหรือสถิติเช็คชื่อในปัจจุบัน
       </div>
     `;
   }
@@ -2125,7 +2106,7 @@ function filterRepStudents() {
   });
 
   if (filtered.length === 0) {
-    container.innerHTML = `<p class="p-6 text-center text-slate-400 text-xs">ไม่พบรายชื่อนักเรียนในรายชื่อ</p>`;
+    container.innerHTML = `<p class="p-6 text-center text-slate-400 text-xs">ไม่พบรายชื่อนักเรียนในระบบ</p>`;
     return;
   }
 
@@ -2154,11 +2135,10 @@ function showStudentDetail(studentId) {
   const total = st.present + st.absent + st.late + st.leave;
   const pct = total > 0 ? Math.round(((st.present + st.late) / total) * 100) : 100;
 
-  // ค้นหารวบรวมประวัติการเข้าเรียน (ดึงจาก Key ทั้งหมด)
   const history = [];
   for (const key in db.attendance) {
     const [date, room, period] = key.split('_');
-    if (room !== s.cls) continue; // กรองเฉพาะประวัติในชั้นของนักเรียน
+    if (room !== s.cls) continue; 
 
     const record = db.attendance[key].find(x => x.studentId === studentId);
     if (record) {
@@ -2171,7 +2151,6 @@ function showStudentDetail(studentId) {
     }
   }
 
-  // Sort history newest first
   history.sort((a, b) => b.date.localeCompare(a.date));
 
   const statusLabel = { present: 'มาเรียน', absent: 'ขาดเรียน', late: 'มาสาย', leave: 'ลากิจ/ป่วย' };
@@ -2196,7 +2175,6 @@ function showStudentDetail(studentId) {
         </div>
       </div>
       <div class="p-5 space-y-5">
-        <!-- Dashboard Breakdown inside detail -->
         <div class="grid grid-cols-4 gap-2 text-center text-xs">
           <div class="bg-emerald-50 border border-emerald-100 p-2.5 rounded-xl">
             <span class="text-[20px] font-bold text-emerald-700 block">${st.present}</span>
@@ -2227,7 +2205,7 @@ function showStudentDetail(studentId) {
                   <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge[h.status]}">${statusLabel[h.status]}</span>
                 </div>
               </div>
-            `).join('') : '<p class="p-8 text-center text-slate-400 text-xs">ยังไม่มีประวัติชั่วโมงการเช็คชื่อเวลาเรียน</p>'}
+            `).join('') : '<p class="p-8 text-center text-slate-400 text-xs">ยังไม่มีประวัติการเช็คชื่อเวลาเรียน</p>'}
           </div>
         </div>
       </div>
@@ -2241,7 +2219,6 @@ function renderDashboard() {
   const totalClasses = db.classes.length;
   const totalHw = db.homework.length;
   
-  // คำนวณอัตราเวลาเข้าเรียนภาพรวม (Total present/late vs total checks)
   let sumPAndL = 0;
   let totalAttActions = 0;
   
@@ -2285,7 +2262,6 @@ function renderDashboard() {
     </div>
   `;
 
-  // Feed: Today's checks list
   const today = new Date().toISOString().split('T')[0];
   const todayKeys = Object.keys(db.attendance).filter(k => k.startsWith(today));
   const todayEl = document.getElementById('dashTodayAtt');
@@ -2323,12 +2299,11 @@ function renderDashboard() {
     todayEl.innerHTML = html;
   }
 
-  // Feed: Upcoming tasks list
   const now = new Date();
   const upcomingHws = db.homework.filter(h => {
     const due = new Date(h.due);
     const diffDays = (due - now) / 864e5;
-    return diffDays >= -1 && diffDays <= 7; // range: overdue 1 day to 7 days ahead
+    return diffDays >= -1 && diffDays <= 7;
   });
 
   upcomingHws.sort((a, b) => a.due.localeCompare(b.due));
@@ -2382,7 +2357,6 @@ function importJSON(event) {
         db = imported;
         pushToCloud();
         
-        // Refresh All Views
         updateClassSelects();
         renderDashboard();
         renderStudentTable();
@@ -2407,7 +2381,7 @@ function formatThaiDate(dateStr) {
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
 }
 
-// Close config modals on background touch overlay
+// ปิดโมดอลเมื่อกดพื้นหลัง
 document.querySelectorAll('.fixed').forEach(modal => {
   modal.addEventListener('click', function(e) {
     if (e.target === modal && modal.id !== 'confirmModal') {
