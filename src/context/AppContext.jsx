@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { supabase, localDb } from '../services/supabase';
+import { supabase, localDb, supabaseAppId } from '../services/supabase';
 
 export const AppContext = createContext();
 
@@ -8,31 +8,68 @@ export const AppProvider = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Fetch data from Supabase on mount
   useEffect(() => {
     const initData = async () => {
       setIsLoading(true);
       if (supabase) {
         try {
-          const { data, error } = await supabase.from('computer_attendance').select('id').limit(1);
-          if (!error) {
+          const { data, error } = await supabase
+            .from('computer_attendance')
+            .select('data')
+            .eq('id', supabaseAppId)
+            .single();
+            
+          if (error) {
+            console.error("Supabase fetch error:", error);
+            // Fallback to local storage backup if available
+            const localBackup = localStorage.getItem('computer_att_db');
+            if (localBackup) setDb(JSON.parse(localBackup));
+          } else if (data && data.data) {
             setIsConnected(true);
-            // In a real scenario, fetch all needed data from Supabase here
-            // For now, we rely on localDb as mock
+            setDb(data.data);
+            localStorage.setItem('computer_att_db', JSON.stringify(data.data));
           }
         } catch (err) {
           console.error("Supabase connection failed:", err);
+          const localBackup = localStorage.getItem('computer_att_db');
+          if (localBackup) setDb(JSON.parse(localBackup));
         }
+      } else {
+        const localBackup = localStorage.getItem('computer_att_db');
+        if (localBackup) setDb(JSON.parse(localBackup));
       }
       setIsLoading(false);
     };
     initData();
   }, []);
 
+  // Sync to Cloud function
+  const pushToCloud = async (newDb) => {
+    setDb(newDb);
+    localStorage.setItem('computer_att_db', JSON.stringify(newDb));
+    
+    if (isConnected && supabase) {
+      try {
+        await supabase
+          .from('computer_attendance')
+          .upsert({ 
+            id: supabaseAppId, 
+            data: newDb, 
+            updated_at: new Date().toISOString() 
+          });
+      } catch (error) {
+        console.error("Push to Cloud Fail:", error);
+      }
+    }
+  };
+
   const value = {
     db,
-    setDb,
+    setDb: pushToCloud,
     isConnected,
-    isLoading
+    isLoading,
+    pushToCloud
   };
 
   return (
