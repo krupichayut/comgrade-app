@@ -1,266 +1,261 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useMemo } from 'react';
 import { AppContext } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { CheckSquare, FloppyDisk, Clock, CheckCircle, XCircle, ClockAfternoon, Notepad } from '@phosphor-icons/react';
+import { CheckSquare, CalendarBlank, Chalkboard, Clock, FloppyDisk, Checks, UserCircle } from '@phosphor-icons/react';
 
 const Attendance = () => {
   const { db, setDb } = useContext(AppContext);
   const { addToast } = useToast();
-  
+
   const [attDate, setAttDate] = useState(new Date().toISOString().split('T')[0]);
   const [attClass, setAttClass] = useState(db?.classes?.[0] || '');
-  const [attPeriod, setAttPeriod] = useState('1');
-  const [thresholdTime, setThresholdTime] = useState('08:45');
-  const [autoCalculate, setAutoCalculate] = useState(true);
+  const [attPeriod, setAttPeriod] = useState('คาบที่ 1 (08:30-09:30)');
+  const [lateTimeThreshold, setLateTimeThreshold] = useState('08:45');
+  const [autoLate, setAutoLate] = useState(true);
 
-  // currentAttendance format: { [studentId]: { status, checkTime } }
-  const [currentAttendance, setCurrentAttendance] = useState({});
+  const studentsInClass = useMemo(() => {
+    return db?.students?.filter(s => s.cls === attClass).sort((a, b) => a.no - b.no) || [];
+  }, [db?.students, attClass]);
 
-  const classStudents = db?.students?.filter(s => s.cls === attClass)?.sort((a, b) => a.no - b.no) || [];
-  
-  const getAttKey = () => `${attDate}_${attClass}_${attPeriod}`;
+  const [currentAtt, setCurrentAtt] = useState({});
 
-  const getCurrentTimeStr = () => {
-    const now = new Date();
-    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  };
-
-  // Load attendance from db whenever filters change
   useEffect(() => {
     if (!attClass) return;
-    const key = getAttKey();
-    const savedRecords = db?.attendance?.[key] || [];
-    const initialAtt = {};
-    savedRecords.forEach(r => {
-      initialAtt[r.studentId] = { status: r.status, checkTime: r.checkTime || getCurrentTimeStr() };
+    const key = `${attDate}_${attClass}_${attPeriod}`;
+    const saved = db?.attendance?.[key];
+    const newAtt = {};
+
+    studentsInClass.forEach(s => {
+      const existing = saved?.find(x => x.studentId === s.id);
+      newAtt[s.id] = existing ? { status: existing.status, time: existing.checkTime } : { status: '', time: '' };
     });
-    setCurrentAttendance(initialAtt);
-  }, [attDate, attClass, attPeriod, db]);
+    setCurrentAtt(newAtt);
+  }, [attDate, attClass, attPeriod, db?.attendance, studentsInClass]);
 
-  const updateStudentTime = (studentId, timeVal) => {
-    setCurrentAttendance(prev => {
-      const currentStatus = prev[studentId]?.status || 'present';
-      let finalStatus = currentStatus;
-
-      if (autoCalculate && currentStatus !== 'leave' && currentStatus !== 'absent') {
-        if (thresholdTime) {
-          finalStatus = timeVal <= thresholdTime ? 'present' : 'late';
-        }
-      }
-      return { ...prev, [studentId]: { status: finalStatus, checkTime: timeVal } };
-    });
-  };
-
-  const setStudentStatus = (studentId, status) => {
-    setCurrentAttendance(prev => {
-      const existing = prev[studentId];
-      if (existing && existing.status === status) {
-        // Toggle off
-        const next = { ...prev };
-        delete next[studentId];
-        return next;
-      }
-
-      const timeVal = existing?.checkTime || getCurrentTimeStr();
+  const toggleStatus = (studentId, status) => {
+    setCurrentAtt(prev => {
+      const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
       let finalStatus = status;
 
-      if (autoCalculate && (status === 'present' || status === 'late')) {
-        if (thresholdTime) {
-          finalStatus = timeVal <= thresholdTime ? 'present' : 'late';
+      if (autoLate && (status === 'present' || status === 'late')) {
+        if (nowTime > lateTimeThreshold) {
+          finalStatus = 'late';
+        } else {
+          finalStatus = 'present';
         }
       }
 
-      return { ...prev, [studentId]: { status: finalStatus, checkTime: timeVal } };
+      const prevStatus = prev[studentId].status;
+      return {
+        ...prev,
+        [studentId]: {
+          status: prevStatus === finalStatus ? '' : finalStatus,
+          time: prevStatus === finalStatus ? '' : nowTime
+        }
+      };
     });
   };
 
-  const markAllPresent = () => {
-    const nowStr = getCurrentTimeStr();
-    const newAtt = { ...currentAttendance };
-    
-    classStudents.forEach(s => {
+  const setAllPresent = () => {
+    setCurrentAtt(prev => {
+      const newAtt = { ...prev };
+      const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
       let finalStatus = 'present';
-      if (autoCalculate && thresholdTime) {
-        finalStatus = nowStr <= thresholdTime ? 'present' : 'late';
+      if (autoLate && nowTime > lateTimeThreshold) {
+        finalStatus = 'late';
       }
-      newAtt[s.id] = { status: finalStatus, checkTime: nowStr };
+
+      Object.keys(newAtt).forEach(id => {
+        newAtt[id] = { status: finalStatus, time: nowTime };
+      });
+      return newAtt;
     });
-    
-    setCurrentAttendance(newAtt);
+    addToast("ตั้งค่าให้ทุกคนมาเรียนเรียบร้อย", "info");
   };
 
   const saveAttendance = () => {
-    if (!attClass) {
-      addToast("กรุณาเลือกชั้นเรียน", "error");
-      return;
-    }
+    const key = `${attDate}_${attClass}_${attPeriod}`;
+    const recordsToSave = [];
 
-    const key = getAttKey();
-    const records = [];
-    
-    for (const id in currentAttendance) {
-      records.push({
-        studentId: parseInt(id),
-        status: currentAttendance[id].status,
-        checkTime: currentAttendance[id].checkTime
-      });
-    }
+    Object.keys(currentAtt).forEach(id => {
+      if (currentAtt[id].status) {
+        recordsToSave.push({
+          studentId: parseInt(id),
+          status: currentAtt[id].status,
+          checkTime: currentAtt[id].time
+        });
+      }
+    });
 
     const newDb = { ...db };
     if (!newDb.attendance) newDb.attendance = {};
-    newDb.attendance[key] = records;
     
+    if (recordsToSave.length === 0) {
+      delete newDb.attendance[key];
+    } else {
+      newDb.attendance[key] = recordsToSave;
+    }
+
     setDb(newDb);
-    addToast("บันทึกการลงเวลาเช็คชื่อวันนี้สำเร็จเรียบร้อย ✅", "success");
+    addToast(`บันทึกข้อมูลการเช็คชื่อห้อง ${attClass} เรียบร้อยแล้ว`, "success");
   };
 
-  // Quick Stats
-  let presentCount = 0, absentCount = 0, lateCount = 0, leaveCount = 0, checkedCount = 0;
-  for (const id in currentAttendance) {
-    const status = currentAttendance[id].status;
-    if (status === 'present') presentCount++;
-    if (status === 'absent') absentCount++;
-    if (status === 'late') lateCount++;
-    if (status === 'leave') leaveCount++;
-    checkedCount++;
-  }
+  // Stats calculation
+  const stats = { total: studentsInClass.length, present: 0, absent: 0, late: 0, leave: 0, uncheck: 0 };
+  Object.values(currentAtt).forEach(v => {
+    if (v.status) stats[v.status]++;
+    else stats.uncheck++;
+  });
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-300">
-      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
-        <div className="flex flex-wrap items-end gap-4 justify-between">
-          <div className="flex flex-wrap gap-4 items-end flex-1">
-            <div className="w-full sm:w-40">
-              <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase">วันที่ทำรายการ</label>
-              <input type="date" value={attDate} onChange={e => setAttDate(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none text-sm focus:border-indigo-500" />
-            </div>
-            <div className="w-full sm:w-36">
-              <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase">ชั้นเรียน</label>
-              <select value={attClass} onChange={e => setAttClass(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none text-sm bg-white focus:border-indigo-500">
-                {db?.classes?.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div className="w-full sm:w-56">
-              <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase">คาบเรียน/เวลาเรียน</label>
-              <select value={attPeriod} onChange={e => setAttPeriod(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none text-sm bg-white focus:border-indigo-500">
-                <option value="1">คาบที่ 1 (08:30-09:30)</option>
-                <option value="2">คาบที่ 2 (09:30-10:30)</option>
-                <option value="3">คาบที่ 3 (10:30-11:30)</option>
-                <option value="4">คาบที่ 4 (12:30-13:30)</option>
-                <option value="5">คาบที่ 5 (13:30-14:30)</option>
-                <option value="6">คาบที่ 6 (14:30-15:30)</option>
-              </select>
-            </div>
+    <div className="space-y-6">
+      {/* Configuration Card */}
+      <div className="premium-card p-6 flex flex-col xl:flex-row xl:items-center gap-6 justify-between z-10 relative">
+        <div className="flex flex-wrap gap-5 w-full xl:w-auto">
+          <div className="w-full sm:w-40">
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><CalendarBlank weight="bold" /> วันที่ทำรายการ</label>
+            <input type="date" value={attDate} onChange={e => setAttDate(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-bold text-slate-700 focus:border-indigo-500 transition-all" />
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <button onClick={markAllPresent} className="flex-1 sm:flex-initial px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-xl text-sm flex items-center justify-center gap-1.5 transition-colors">
-              <CheckSquare weight="bold" /> มาเรียนทั้งหมด
-            </button>
-            <button onClick={saveAttendance} className="flex-1 sm:flex-initial px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/10 transition-colors">
-              <FloppyDisk weight="bold" /> บันทึกข้อมูล
-            </button>
+          <div className="w-full sm:w-36">
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><Chalkboard weight="bold" /> ชั้นเรียน</label>
+            <select value={attClass} onChange={e => setAttClass(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-bold text-indigo-900 focus:border-indigo-500 transition-all">
+              {db?.classes?.map(c => <option key={c} value={c}>ห้อง {c}</option>)}
+            </select>
+          </div>
+          <div className="w-full sm:w-64">
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><Clock weight="bold" /> คาบเรียน</label>
+            <select value={attPeriod} onChange={e => setAttPeriod(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-none text-sm font-bold text-slate-700 focus:border-indigo-500 transition-all">
+              <option value="คาบที่ 1 (08:30-09:30)">คาบที่ 1 (08:30-09:30)</option>
+              <option value="คาบที่ 2 (09:30-10:30)">คาบที่ 2 (09:30-10:30)</option>
+              <option value="คาบที่ 3 (10:30-11:30)">คาบที่ 3 (10:30-11:30)</option>
+              <option value="คาบที่ 4 (12:30-13:30)">คาบที่ 4 (12:30-13:30)</option>
+              <option value="คาบที่ 5 (13:30-14:30)">คาบที่ 5 (13:30-14:30)</option>
+              <option value="คาบที่ 6 (14:30-15:30)">คาบที่ 6 (14:30-15:30)</option>
+            </select>
           </div>
         </div>
 
-        {/* Threshold setup */}
-        <div className="flex flex-wrap items-center gap-4 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
-          <div className="flex items-center gap-2">
-            <Clock weight="bold" className="text-indigo-600 text-lg" />
-            <span className="text-sm font-semibold text-indigo-950">เกณฑ์เวลาและคำนวณเข้าเรียนสายอัตโนมัติ:</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <label className="text-xs font-semibold text-slate-500">เกณฑ์เข้าเรียนสาย</label>
-            <input type="time" value={thresholdTime} onChange={e => setThresholdTime(e.target.value)} className="px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none bg-white font-semibold text-indigo-900 font-mono focus:border-indigo-500" />
-          </div>
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="autoCalc" checked={autoCalculate} onChange={e => setAutoCalculate(e.target.checked)} className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300" />
-            <label htmlFor="autoCalc" className="text-xs font-semibold text-slate-600 cursor-pointer">ช่วยเลือก "มาเรียน" หรือ "มาสาย" อัตโนมัติเมื่อกดเลือกสถานะ</label>
-          </div>
-        </div>
-      </div>
-      
-      {/* Quick Stats */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-        <div className="bg-white rounded-xl border p-3 flex flex-col">
-          <span className="text-[10px] font-semibold text-slate-400 uppercase">👥 นักเรียนทั้งหมด</span>
-          <span className="font-display font-bold text-lg text-slate-800">{classStudents.length} คน</span>
-        </div>
-        <div className="bg-emerald-50 rounded-xl border border-emerald-100 p-3 flex flex-col">
-          <span className="text-[10px] font-semibold text-emerald-600 uppercase">✅ มาเรียน</span>
-          <span className="font-display font-bold text-lg text-emerald-700">{presentCount}</span>
-        </div>
-        <div className="bg-rose-50 rounded-xl border border-rose-100 p-3 flex flex-col">
-          <span className="text-[10px] font-semibold text-rose-500 uppercase">❌ ขาดเรียน</span>
-          <span className="font-display font-bold text-lg text-rose-700">{absentCount}</span>
-        </div>
-        <div className="bg-amber-50 rounded-xl border border-amber-100 p-3 flex flex-col">
-          <span className="text-[10px] font-semibold text-amber-600 uppercase">⏰ มาสาย</span>
-          <span className="font-display font-bold text-lg text-amber-700">{lateCount}</span>
-        </div>
-        <div className="bg-indigo-50 rounded-xl border border-indigo-100 p-3 flex flex-col">
-          <span className="text-[10px] font-semibold text-indigo-600 uppercase">📋 ลากิจ/ป่วย</span>
-          <span className="font-display font-bold text-lg text-indigo-700">{leaveCount}</span>
-        </div>
-        <div className="bg-slate-100 rounded-xl p-3 flex flex-col border">
-          <span className="text-[10px] font-semibold text-slate-500 uppercase">⬜ ยังไม่เช็ค</span>
-          <span className="font-display font-bold text-lg text-slate-600">{classStudents.length - checkedCount}</span>
+        <div className="flex gap-3 w-full xl:w-auto">
+          <button onClick={setAllPresent} className="flex-1 xl:flex-none px-5 py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-sm flex items-center justify-center gap-2 border border-indigo-200 btn-premium">
+            <Checks weight="bold" className="text-lg" /> มาเรียนทั้งหมด
+          </button>
+          <button onClick={saveAttendance} className="flex-1 xl:flex-none px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/30 btn-premium">
+            <FloppyDisk weight="fill" className="text-lg" /> บันทึกข้อมูล
+          </button>
         </div>
       </div>
 
-      {/* Grid List */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-        {classStudents.length === 0 ? (
-           <div className="col-span-full py-12 text-center text-slate-400 bg-white rounded-2xl border">
-             <p className="text-sm">ไม่มีข้อมูลนักเรียนในชั้นเรียนนี้ (โปรดเพิ่มนักเรียนที่เมนูจัดการนักเรียน)</p>
-           </div>
-        ) : (
-          classStudents.map(student => {
-            const record = currentAttendance[student.id] || { status: "", checkTime: getCurrentTimeStr() };
-            const status = record.status;
-            const time = record.checkTime;
+      {/* Auto-late Setting Bar */}
+      <div className="flex flex-wrap items-center gap-4 bg-indigo-50/50 border border-indigo-100 p-4 rounded-2xl">
+        <div className="flex items-center gap-2 text-indigo-700 font-bold text-sm">
+          <Clock weight="fill" className="text-lg" />
+          <span>ระบบคำนวณเข้าเรียนสายอัตโนมัติ:</span>
+        </div>
+        <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-lg border border-indigo-100 shadow-sm">
+          <span className="text-xs text-slate-500 font-semibold">เกณฑ์เวลาสาย</span>
+          <input type="time" value={lateTimeThreshold} onChange={e => setLateTimeThreshold(e.target.value)} className="outline-none text-sm font-bold text-rose-600 bg-transparent" />
+        </div>
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-600 cursor-pointer select-none">
+          <input type="checkbox" checked={autoLate} onChange={e => setAutoLate(e.target.checked)} className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+          เปิดใช้ Auto-Late เมื่อกดปุ่ม "มา" หรือ "สาย"
+        </label>
+      </div>
 
-            let bgStyle = "bg-white border-slate-200 hover:shadow-md";
-            if (status === 'present') bgStyle = "bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/10 hover:shadow-emerald-500/10";
-            if (status === 'absent') bgStyle = "bg-rose-50 border-rose-500 ring-2 ring-rose-500/10 hover:shadow-rose-500/10";
-            if (status === 'late') bgStyle = "bg-amber-50 border-amber-500 ring-2 ring-amber-500/10 hover:shadow-amber-500/10";
-            if (status === 'leave') bgStyle = "bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/10 hover:shadow-indigo-500/10";
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="bg-white border rounded-2xl p-4 shadow-sm relative overflow-hidden group">
+          <div className="absolute right-0 top-0 bottom-0 w-1 bg-slate-200"></div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">นักเรียนทั้งหมด</p>
+          <p className="font-display font-bold text-2xl text-slate-800">{stats.total} <span className="text-sm font-medium text-slate-500">คน</span></p>
+        </div>
+        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 shadow-sm relative overflow-hidden group">
+          <div className="absolute right-0 top-0 bottom-0 w-1 bg-emerald-400"></div>
+          <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1 flex items-center gap-1"><CheckSquare weight="fill" /> มาเรียน</p>
+          <p className="font-display font-bold text-2xl text-emerald-700">{stats.present}</p>
+        </div>
+        <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 shadow-sm relative overflow-hidden group">
+          <div className="absolute right-0 top-0 bottom-0 w-1 bg-rose-400"></div>
+          <p className="text-[10px] font-bold text-rose-600 uppercase mb-1">❌ ขาดเรียน</p>
+          <p className="font-display font-bold text-2xl text-rose-700">{stats.absent}</p>
+        </div>
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 shadow-sm relative overflow-hidden group">
+          <div className="absolute right-0 top-0 bottom-0 w-1 bg-amber-400"></div>
+          <p className="text-[10px] font-bold text-amber-600 uppercase mb-1">⚠️ มาสาย</p>
+          <p className="font-display font-bold text-2xl text-amber-700">{stats.late}</p>
+        </div>
+        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 shadow-sm relative overflow-hidden group">
+          <div className="absolute right-0 top-0 bottom-0 w-1 bg-indigo-400"></div>
+          <p className="text-[10px] font-bold text-indigo-600 uppercase mb-1">📝 ลากิจ/ป่วย</p>
+          <p className="font-display font-bold text-2xl text-indigo-700">{stats.leave}</p>
+        </div>
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-sm relative overflow-hidden group">
+          <div className="absolute right-0 top-0 bottom-0 w-1 bg-slate-300"></div>
+          <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">⏳ ยังไม่เช็ค</p>
+          <p className="font-display font-bold text-2xl text-slate-700">{stats.uncheck}</p>
+        </div>
+      </div>
+
+      {/* Grid List of Students */}
+      {studentsInClass.length === 0 ? (
+        <div className="premium-card p-16 text-center text-slate-400">
+          <UserCircle weight="duotone" className="text-6xl mx-auto mb-4 text-slate-300" />
+          <p className="font-display font-medium text-lg">ไม่พบข้อมูลนักเรียนในชั้นเรียนนี้</p>
+          <p className="text-sm mt-2">โปรดไปที่เมนู 'จัดการนักเรียน' เพื่อเพิ่มรายชื่อเข้าสู่ระบบ</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-10">
+          {studentsInClass.map(s => {
+            const st = currentAtt[s.id] || { status: '', time: '' };
+            let cardBg = "bg-white border-slate-200 hover:border-indigo-300";
+            let statusDot = "bg-slate-200";
+            let statusText = "ยังไม่เช็ค";
+            let textColor = "text-slate-400";
+            
+            if (st.status === 'present') { cardBg = "bg-emerald-50 border-emerald-200"; statusDot = "bg-emerald-500 shadow-[0_0_8px_#10b981]"; statusText = `มาเรียน (${st.time})`; textColor = "text-emerald-700"; }
+            if (st.status === 'absent') { cardBg = "bg-rose-50 border-rose-200"; statusDot = "bg-rose-500"; statusText = `ขาดเรียน`; textColor = "text-rose-700"; }
+            if (st.status === 'late') { cardBg = "bg-amber-50 border-amber-200"; statusDot = "bg-amber-500"; statusText = `มาสาย (${st.time})`; textColor = "text-amber-700"; }
+            if (st.status === 'leave') { cardBg = "bg-indigo-50 border-indigo-200"; statusDot = "bg-indigo-500"; statusText = `ลา`; textColor = "text-indigo-700"; }
 
             return (
-              <div key={student.id} className={`border rounded-2xl p-4 flex flex-col justify-between shadow-sm transition-all ${bgStyle}`}>
-                <div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold mb-1">
-                    <span>เลขที่ {student.no}</span>
-                    <div className="flex items-center gap-1">
-                      <Clock weight="bold" className="text-slate-400" />
-                      <input 
-                        type="time" 
-                        value={time} 
-                        onChange={e => updateStudentTime(student.id, e.target.value)} 
-                        className="w-[74px] px-1 py-0.5 rounded border border-slate-200 text-slate-700 focus:border-indigo-500 font-mono text-[11px] outline-none bg-white text-center"
-                      />
-                    </div>
+              <div key={s.id} className={`rounded-3xl border p-4 shadow-sm transition-all duration-300 hover:shadow-md ${cardBg}`}>
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">เลขที่ {s.no}</span>
+                    <h4 className="font-display font-bold text-slate-800 text-base leading-tight truncate">{s.name}</h4>
                   </div>
-                  <h4 className="font-display font-semibold text-slate-800 text-sm line-clamp-1 leading-tight mt-1">{student.name}</h4>
-                  
-                  <div className="text-[10px] mt-1.5 h-4">
-                    {status === 'present' ? <span className="text-emerald-600 font-bold flex items-center gap-1"><CheckCircle weight="fill" /> มาเรียน (ทันเวลา)</span> : 
-                     status === 'late' ? <span className="text-amber-600 font-bold flex items-center gap-1"><ClockAfternoon weight="fill" /> มาสาย</span> :
-                     status === 'absent' ? <span className="text-rose-600 font-bold flex items-center gap-1"><XCircle weight="fill" /> ขาดเรียน</span> :
-                     status === 'leave' ? <span className="text-indigo-600 font-bold flex items-center gap-1"><Notepad weight="fill" /> ลาเรียน</span> :
-                     <span className="text-slate-400 font-medium">ยังไม่บันทึก</span>}
+                  <div className="w-8 h-8 rounded-full bg-white/60 shadow-sm flex items-center justify-center border font-bold text-xs text-slate-500">
+                    {s.gender === 'หญิง' ? 'ญ' : 'ช'}
                   </div>
                 </div>
-                <div className="grid grid-cols-4 gap-1 mt-3">
-                  <button onClick={() => setStudentStatus(student.id, 'present')} className={`py-2 text-xs font-bold rounded-xl transition-all border ${status === 'present' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200'}`}>มา</button>
-                  <button onClick={() => setStudentStatus(student.id, 'absent')} className={`py-2 text-xs font-bold rounded-xl transition-all border ${status === 'absent' ? 'bg-rose-600 text-white border-rose-600' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200'}`}>ขาด</button>
-                  <button onClick={() => setStudentStatus(student.id, 'late')} className={`py-2 text-xs font-bold rounded-xl transition-all border ${status === 'late' ? 'bg-amber-500 text-white border-amber-500' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200'}`}>สาย</button>
-                  <button onClick={() => setStudentStatus(student.id, 'leave')} className={`py-2 text-xs font-bold rounded-xl transition-all border ${status === 'leave' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200'}`}>ลา</button>
+
+                <div className="flex items-center gap-1.5 mb-5 text-[11px] font-bold">
+                  <span className={`w-2 h-2 rounded-full inline-block ${statusDot}`}></span>
+                  <span className={`${textColor}`}>{statusText}</span>
+                </div>
+                
+                <div className="grid grid-cols-4 gap-1.5 h-10">
+                  <button 
+                    onClick={() => toggleStatus(s.id, 'present')} 
+                    className={`rounded-xl font-bold text-xs transition-all flex items-center justify-center ${st.status === 'present' ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30' : 'bg-white border text-slate-600 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-600'}`}
+                  >มา</button>
+                  <button 
+                    onClick={() => toggleStatus(s.id, 'absent')} 
+                    className={`rounded-xl font-bold text-xs transition-all flex items-center justify-center ${st.status === 'absent' ? 'bg-rose-500 text-white shadow-md shadow-rose-500/30' : 'bg-white border text-slate-600 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600'}`}
+                  >ขาด</button>
+                  <button 
+                    onClick={() => toggleStatus(s.id, 'late')} 
+                    className={`rounded-xl font-bold text-xs transition-all flex items-center justify-center ${st.status === 'late' ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30' : 'bg-white border text-slate-600 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-600'}`}
+                  >สาย</button>
+                  <button 
+                    onClick={() => toggleStatus(s.id, 'leave')} 
+                    className={`rounded-xl font-bold text-xs transition-all flex items-center justify-center ${st.status === 'leave' ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/30' : 'bg-white border text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600'}`}
+                  >ลา</button>
                 </div>
               </div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
     </div>
   );
 };
