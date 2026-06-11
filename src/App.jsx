@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
-import { House, CheckSquare, Users, ChartBarHorizontal, Notebook, FileText, GraduationCap, List, X } from '@phosphor-icons/react';
+import { House, CheckSquare, Users, ChartBarHorizontal, Notebook, FileText, GraduationCap, List, BookOpen } from '@phosphor-icons/react';
 import { AppProvider, AppContext } from './context/AppContext';
 
 import Dashboard from './pages/Dashboard';
@@ -9,6 +9,7 @@ import Students from './pages/Students';
 import Homework from './pages/Homework';
 import Scores from './pages/Scores';
 import Report from './pages/Report';
+import LessonPlan from './pages/LessonPlan';
 
 const SidebarItem = ({ to, icon, label, onClick }) => (
   <NavLink
@@ -36,6 +37,7 @@ const Layout = ({ children }) => {
   const getPageTitle = () => {
     switch(location.pathname) {
       case '/dashboard': return 'ภาพรวม (Dashboard)';
+      case '/lesson-plan': return 'แผนการสอน (Lesson Plan)';
       case '/attendance': return 'เช็คชื่อวันนี้ (Attendance)';
       case '/students': return 'จัดการนักเรียน (Students)';
       case '/scores': return 'คะแนนกิจกรรม (Scores)';
@@ -59,6 +61,7 @@ const Layout = ({ children }) => {
       <div className="p-4 flex-1 overflow-y-auto space-y-1.5 custom-scrollbar">
         <p className="px-4 text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-2 mt-4">เมนูหลัก</p>
         <SidebarItem to="/dashboard" icon={<House weight="duotone" />} label="ภาพรวม" onClick={() => setIsMobileMenuOpen(false)} />
+        <SidebarItem to="/lesson-plan" icon={<BookOpen weight="duotone" />} label="แผนการสอน" onClick={() => setIsMobileMenuOpen(false)} />
         <SidebarItem to="/attendance" icon={<CheckSquare weight="duotone" />} label="เช็คชื่อวันนี้" onClick={() => setIsMobileMenuOpen(false)} />
         <SidebarItem to="/students" icon={<Users weight="duotone" />} label="จัดการนักเรียน" onClick={() => setIsMobileMenuOpen(false)} />
         
@@ -147,6 +150,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/lesson-plan" element={<LessonPlan />} />
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/students" element={<Students />} />
             <Route path="/scores" element={<Scores />} />

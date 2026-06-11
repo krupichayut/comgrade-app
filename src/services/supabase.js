@@ -13,6 +13,8 @@ export const localDb = {
   attendance: {}, 
   scores: {},     
   homework: [],
+  lessonPlans: {},
   idCounter: 1,
-  hwCounter: 1
+  hwCounter: 1,
+  lpCounter: 1
 };
