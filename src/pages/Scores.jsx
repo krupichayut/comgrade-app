@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { FloppyDisk, ArrowsCounterClockwise, Star, FileText, CheckCircle, Warning } from '@phosphor-icons/react';
+import { FloppyDisk, Star, FileText, Warning, ChartBarHorizontal } from '@phosphor-icons/react';
 
 const Scores = () => {
   const { db, setDb } = useContext(AppContext);
@@ -42,18 +42,15 @@ const Scores = () => {
   };
 
   const evaluateScoreGrade = (pct) => {
-    if (pct >= 80) return { text: "ดีเยี่ยม (4)", class: "bg-emerald-50 text-emerald-700 border-emerald-200 shadow-emerald-100" };
-    if (pct >= 70) return { text: "ดีมาก (3)", class: "bg-teal-50 text-teal-700 border-teal-200 shadow-teal-100" };
-    if (pct >= 60) return { text: "ดีพอใช้ (2)", class: "bg-amber-50 text-amber-700 border-amber-200 shadow-amber-100" };
-    if (pct >= 50) return { text: "ผ่านเกณฑ์ (1)", class: "bg-indigo-50 text-indigo-700 border-indigo-200 shadow-indigo-100" };
-    return { text: "ไม่ผ่านเกณฑ์", class: "bg-rose-50 text-rose-700 border-rose-200 shadow-rose-100" };
+    if (pct >= 80) return { text: "ดีเยี่ยม (4)", class: "bg-emerald-100/50 text-emerald-700 border-emerald-200" };
+    if (pct >= 70) return { text: "ดีมาก (3)", class: "bg-teal-100/50 text-teal-700 border-teal-200" };
+    if (pct >= 60) return { text: "ดีพอใช้ (2)", class: "bg-amber-100/50 text-amber-700 border-amber-200" };
+    if (pct >= 50) return { text: "ผ่านเกณฑ์ (1)", class: "bg-indigo-100/50 text-indigo-700 border-indigo-200" };
+    return { text: "ไม่ผ่านเกณฑ์", class: "bg-rose-100/50 text-rose-700 border-rose-200" };
   };
 
   const saveScores = () => {
-    if (!selectedHw) {
-      addToast("กรุณาเลือกชื่องานกิจกรรมที่ต้องการลงบันทึกคะแนน", "error");
-      return;
-    }
+    if (!selectedHw) return addToast("กรุณาเลือกชื่องานกิจกรรม", "error");
 
     const newDb = { ...db };
     if (!newDb.scores) newDb.scores = {};
@@ -73,7 +70,7 @@ const Scores = () => {
     });
 
     setDb(newDb);
-    addToast(`บันทึกผลคะแนน ${savedCount} รายการเรียบร้อยแล้ว`, "success");
+    addToast(`บันทึกคะแนนสำเร็จ ${savedCount} รายการ`, "success");
   };
 
   const renderSummary = () => {
@@ -81,7 +78,7 @@ const Scores = () => {
     
     if (classesToRender.length === 0) {
       return (
-        <div className="premium-card py-16 text-center text-slate-400">
+        <div className="glass-card py-16 text-center text-slate-400">
            <Warning weight="duotone" className="text-6xl mx-auto mb-4 text-slate-300" />
           <p className="font-display font-medium text-lg">ไม่พบข้อมูลชั้นเรียนในระบบ</p>
         </div>
@@ -111,34 +108,29 @@ const Scores = () => {
         });
 
         const pct = totalPossible > 0 ? Math.round((totalEarned / totalPossible) * 100) : 0;
-        if (totalPossible > 0) {
-          sumClassPct += pct;
-          studentClassCount++;
-        }
+        if (totalPossible > 0) { sumClassPct += pct; studentClassCount++; }
 
-        const grade = totalPossible > 0 ? evaluateScoreGrade(pct) : { text: "-", class: "bg-slate-50 text-slate-400 border-slate-200" };
+        const grade = totalPossible > 0 ? evaluateScoreGrade(pct) : { text: "-", class: "bg-white/40 text-slate-400 border-white/60" };
 
         return (
-          <tr key={s.id} className="hover:bg-indigo-50/40 transition-colors group">
-            <td className="py-3 px-5 text-center font-bold text-slate-400">{s.no}</td>
-            <td className="py-3 px-4">
-              <div className="font-bold text-slate-800">{s.name}</div>
+          <tr key={s.id} className="hover:bg-white/50 transition-colors group">
+            <td className="py-4 px-6 text-center font-bold text-slate-400">{s.no}</td>
+            <td className="py-4 px-4 font-bold text-slate-800">{s.name}</td>
+            <td className="py-4 px-4 text-center">
+              <span className="font-mono font-bold text-slate-600 bg-white/50 px-3 py-1.5 rounded-lg border border-white">{totalEarned} / {totalPossible}</span>
             </td>
-            <td className="py-3 px-4 text-center">
-              <span className="font-mono font-medium text-slate-600">{totalEarned} / {totalPossible}</span>
-            </td>
-            <td className="py-3 px-4 text-center">
-               <span className={`font-display font-bold text-lg ${pct >= 80 ? 'text-emerald-500' : pct >= 50 ? 'text-indigo-500' : 'text-rose-500'}`}>
+            <td className="py-4 px-4 text-center">
+               <span className={`font-display font-bold text-2xl ${pct >= 80 ? 'text-emerald-500' : pct >= 50 ? 'text-indigo-500' : 'text-rose-500'}`}>
                  {totalPossible > 0 ? `${pct}%` : "-"}
                </span>
             </td>
-            <td className="py-3 px-4 text-center">
-              {totalPossible > 0 ? <span className={`px-2.5 py-1 text-xs font-bold rounded-lg border shadow-sm ${grade.class}`}>{grade.text}</span> : '-'}
+            <td className="py-4 px-4 text-center">
+              {totalPossible > 0 ? <span className={`px-3 py-1.5 text-xs font-bold rounded-xl border shadow-sm ${grade.class}`}>{grade.text}</span> : '-'}
             </td>
-            <td className="py-3 px-4 text-center">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 rounded-lg border border-slate-200">
+            <td className="py-4 px-4 text-center">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/40 rounded-xl border border-white">
                 <span className="font-bold text-indigo-600">{tasksCompleted}</span> 
-                <span className="text-slate-400 text-xs">/ {clsHws.length} งาน</span>
+                <span className="text-slate-400 text-[10px]">/ {clsHws.length}</span>
               </div>
             </td>
           </tr>
@@ -148,32 +140,32 @@ const Scores = () => {
       const classAveragePct = studentClassCount > 0 ? Math.round(sumClassPct / studentClassCount) : 0;
 
       return (
-        <div key={c} className="premium-card overflow-hidden mb-6">
-          <div className="px-6 py-5 border-b flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-indigo-50 to-white">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
-                <Star weight="fill" className="text-lg" />
+        <div key={c} className="glass-card overflow-hidden mb-8">
+          <div className="px-6 py-6 border-b border-white/60 bg-white/20 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-inner">
+                <Star weight="fill" className="text-2xl" />
               </div>
-              <h4 className="font-display font-bold text-xl text-indigo-950">คะแนนสะสม ชั้น {c}</h4>
+              <h4 className="font-display font-bold text-2xl text-slate-800">คะแนนสะสม ชั้น {c}</h4>
             </div>
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-indigo-100 shadow-sm">
-              <span className="text-xs font-bold text-slate-400 uppercase">ค่าเฉลี่ยห้อง</span>
-              <span className="font-display font-bold text-xl text-indigo-600">{classAveragePct}%</span>
+            <div className="flex items-center gap-3 bg-white/60 px-5 py-2.5 rounded-2xl border border-white shadow-sm">
+              <span className="text-xs font-bold text-slate-500 uppercase">ค่าเฉลี่ยห้อง</span>
+              <span className="font-display font-bold text-2xl text-indigo-600">{classAveragePct}%</span>
             </div>
           </div>
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
                 <tr>
-                  <th className="py-4 px-5 text-center w-20">เลขที่</th>
-                  <th className="py-4 px-4">ชื่อ-นามสกุล</th>
-                  <th className="py-4 px-4 text-center">คะแนนรวมสะสม</th>
-                  <th className="py-4 px-4 text-center">% คะแนนเฉลี่ย</th>
-                  <th className="py-4 px-4 text-center">ระดับผลงาน</th>
-                  <th className="py-4 px-4 text-center">จำนวนงานที่ส่ง</th>
+                  <th className="py-5 px-6 text-center w-20">เลขที่</th>
+                  <th className="py-5 px-4">ชื่อ-นามสกุล</th>
+                  <th className="py-5 px-4 text-center">คะแนนรวม</th>
+                  <th className="py-5 px-4 text-center">% เฉลี่ย</th>
+                  <th className="py-5 px-4 text-center">ระดับผลงาน</th>
+                  <th className="py-5 px-4 text-center">ส่งงานแล้ว</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">{rows}</tbody>
+              <tbody className="divide-y divide-white/40">{rows}</tbody>
             </table>
           </div>
         </div>
@@ -183,105 +175,98 @@ const Scores = () => {
 
   return (
     <div className="space-y-6">
-      {/* Tabs */}
-      <div className="flex gap-2 p-1 bg-slate-200/50 backdrop-blur-sm rounded-2xl w-fit">
+      {/* Premium Tabs */}
+      <div className="flex gap-2 p-1.5 bg-white/40 backdrop-blur-md rounded-2xl border border-white/60 w-fit">
         <button 
-          className={`px-5 py-2.5 text-sm font-bold rounded-xl transition-all ${activeTab === 'entry' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-indigo-600 hover:bg-white/50'}`}
+          className={`px-6 py-3 text-sm font-bold rounded-xl transition-all ${activeTab === 'entry' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:text-indigo-600 hover:bg-white/50'}`}
           onClick={() => setActiveTab('entry')}
         >
           ✏️ บันทึกตารางคะแนน
         </button>
         <button 
-          className={`px-5 py-2.5 text-sm font-bold rounded-xl transition-all ${activeTab === 'summary' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-indigo-600 hover:bg-white/50'}`}
+          className={`px-6 py-3 text-sm font-bold rounded-xl transition-all ${activeTab === 'summary' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:text-indigo-600 hover:bg-white/50'}`}
           onClick={() => setActiveTab('summary')}
         >
-          📊 รายงานคะแนนสะสมห้อง
+          📊 รายงานคะแนนสะสม
         </button>
       </div>
 
       {activeTab === 'entry' && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <div className="premium-card p-4 flex flex-col lg:flex-row gap-4 items-center justify-between z-10 relative">
-            <div className="flex flex-wrap gap-4 items-end w-full lg:w-auto flex-1">
-              <div className="w-full sm:w-36">
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">ชั้นเรียน</label>
-                <select value={scClass} onChange={e => { setScClass(e.target.value); setScHw(''); }} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none text-sm font-bold bg-slate-50 text-indigo-900 focus:border-indigo-500 transition-all">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="glass-card p-6 flex flex-col lg:flex-row gap-6 items-center justify-between z-10 relative">
+            <div className="flex flex-wrap gap-4 items-center w-full lg:w-auto flex-1">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-400 to-purple-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0">
+                <ChartBarHorizontal weight="duotone" className="text-3xl" />
+              </div>
+              
+              <div className="flex bg-white/50 backdrop-blur-md rounded-2xl border border-white/60 p-1 shadow-sm">
+                <select value={scClass} onChange={e => { setScClass(e.target.value); setScHw(''); }} className="bg-transparent pl-4 pr-8 py-2.5 outline-none text-sm font-bold text-indigo-900 cursor-pointer">
+                  {db?.classes?.length === 0 && <option value="">ไม่มีห้องเรียน</option>}
                   {db?.classes?.map(c => <option key={c} value={c}>ห้อง {c}</option>)}
                 </select>
-              </div>
-              <div className="w-full sm:w-72">
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">เลือกใบงาน/กิจกรรม</label>
-                <select value={scHw} onChange={e => setScHw(e.target.value)} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none text-sm font-bold bg-slate-50 focus:border-indigo-500 transition-all text-slate-700">
+                <div className="w-[1px] bg-white mx-1 my-2"></div>
+                <select value={scHw} onChange={e => setScHw(e.target.value)} className="bg-transparent pl-4 pr-8 py-2.5 outline-none text-sm font-bold text-slate-700 cursor-pointer">
                   <option value="">-- โปรดเลือกงาน --</option>
                   {classHws.map(h => <option key={h.id} value={h.id}>{h.title} (เต็ม {h.maxScore})</option>)}
                 </select>
               </div>
             </div>
-            <button onClick={saveScores} className="w-full lg:w-auto px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/30 btn-premium">
+            <button onClick={saveScores} className="w-full lg:w-auto px-6 py-3.5 btn-primary-glass bg-gradient-to-r from-emerald-400 to-teal-500 shadow-emerald-500/30 text-white font-bold rounded-2xl text-sm flex items-center justify-center gap-2">
               <FloppyDisk weight="fill" className="text-lg" /> บันทึกตารางคะแนน
             </button>
           </div>
           
-          <div className="premium-card overflow-hidden">
-            <div className="overflow-x-auto custom-scrollbar">
+          <div className="glass-card overflow-hidden">
+            <div className="overflow-x-auto custom-scrollbar min-h-[400px]">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr>
-                    <th className="py-4 px-5 text-center w-20">เลขที่</th>
-                    <th className="py-4 px-4">ชื่อ-นามสกุลนักเรียน</th>
-                    <th className="py-4 px-4 text-center w-36">คะแนนที่ได้</th>
-                    <th className="py-4 px-4 text-center w-28">คะแนนเต็ม</th>
-                    <th className="py-4 px-4 text-center w-28 text-indigo-600">คิดเป็น %</th>
-                    <th className="py-4 px-4 text-center w-36">ประเมินผล</th>
+                    <th className="py-5 px-6 text-center w-20">เลขที่</th>
+                    <th className="py-5 px-4">ชื่อ-นามสกุลนักเรียน</th>
+                    <th className="py-5 px-4 text-center w-40">คะแนนที่ได้</th>
+                    <th className="py-5 px-4 text-center w-28">คะแนนเต็ม</th>
+                    <th className="py-5 px-4 text-center w-28 text-indigo-600">%</th>
+                    <th className="py-5 px-4 text-center w-40">ประเมินผล</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-sm">
+                <tbody className="divide-y divide-white/40 text-sm">
                   {!selectedHw ? (
                     <tr>
-                      <td colSpan="6" className="py-16 text-center text-slate-400 bg-slate-50/50">
-                        <FileText weight="duotone" className="text-6xl mx-auto mb-3 text-slate-300" />
-                        <p className="font-display font-medium text-lg">โปรดเลือกชิ้นงาน</p>
-                        <p className="text-xs mt-1">เพื่อเริ่มกรอกคะแนนให้กับนักเรียนแต่ละคน</p>
+                      <td colSpan="6" className="py-20 text-center text-slate-400">
+                        <FileText weight="duotone" className="text-7xl mx-auto mb-4 text-slate-300" />
+                        <p className="font-display font-medium text-xl text-slate-500">โปรดเลือกชิ้นงาน</p>
+                        <p className="text-sm mt-2">เพื่อเริ่มกรอกคะแนนให้กับนักเรียนแต่ละคน</p>
                       </td>
                     </tr>
                   ) : entryStudents.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="py-16 text-center text-slate-400 bg-slate-50/50">ไม่พบรายชื่อนักเรียนในชั้น {scClass}</td>
-                    </tr>
+                    <tr><td colSpan="6" className="py-20 text-center text-slate-400">ไม่พบรายชื่อนักเรียนในห้องนี้</td></tr>
                   ) : (
                     entryStudents.map(s => {
                       const val = currentScores[s.id] !== undefined ? currentScores[s.id] : '';
-                      let pct = 0;
-                      let pctText = "-";
-                      let grade = { text: "-", class: "bg-slate-50 text-slate-400 border-slate-200" };
+                      let pct = 0; let pctText = "-"; let grade = { text: "-", class: "bg-white/40 text-slate-400 border-white/60" };
                       
                       if (val !== '' && !isNaN(val)) {
-                        const scoreNum = parseFloat(val);
-                        pct = selectedHw.maxScore > 0 ? Math.round((scoreNum / selectedHw.maxScore) * 100) : 0;
+                        pct = selectedHw.maxScore > 0 ? Math.round((parseFloat(val) / selectedHw.maxScore) * 100) : 0;
                         pctText = `${pct}%`;
                         grade = evaluateScoreGrade(pct);
                       }
 
                       return (
-                        <tr key={s.id} className="hover:bg-indigo-50/40 transition-colors group">
-                          <td className="py-3 px-5 text-center font-bold text-slate-400">{s.no}</td>
-                          <td className="py-3 px-4 font-bold text-slate-800">{s.name}</td>
-                          <td className="py-3 px-4 text-center">
+                        <tr key={s.id} className="hover:bg-white/50 transition-colors group">
+                          <td className="py-4 px-6 text-center font-bold text-slate-400">{s.no}</td>
+                          <td className="py-4 px-4 font-bold text-slate-800">{s.name}</td>
+                          <td className="py-4 px-4 text-center">
                             <input 
-                              type="number" 
-                              min="0" 
-                              max={selectedHw.maxScore} 
-                              step="any"
-                              value={val}
-                              onChange={e => handleScoreChange(s.id, e.target.value)}
-                              className="w-24 px-3 py-2 border border-slate-200 rounded-xl text-center font-bold text-indigo-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all shadow-inner bg-slate-50" 
+                              type="number" min="0" max={selectedHw.maxScore} step="any"
+                              value={val} onChange={e => handleScoreChange(s.id, e.target.value)}
+                              className="w-24 px-4 py-2 bg-white/60 border border-white/80 rounded-xl text-center font-bold text-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-200 outline-none transition-all shadow-inner" 
                               placeholder="0" 
                             />
                           </td>
-                          <td className="py-3 px-4 text-center font-bold text-slate-400">{selectedHw.maxScore}</td>
-                          <td className="py-3 px-4 text-center font-display font-bold text-lg text-slate-700">{pctText}</td>
-                          <td className="py-3 px-4 text-center">
-                            {grade.text !== '-' ? <span className={`px-2.5 py-1 text-xs font-bold rounded-lg border shadow-sm ${grade.class}`}>{grade.text}</span> : '-'}
+                          <td className="py-4 px-4 text-center font-bold text-slate-400">{selectedHw.maxScore}</td>
+                          <td className="py-4 px-4 text-center font-display font-bold text-xl text-slate-700">{pctText}</td>
+                          <td className="py-4 px-4 text-center">
+                            {grade.text !== '-' ? <span className={`px-3 py-1.5 text-xs font-bold rounded-xl border shadow-sm ${grade.class}`}>{grade.text}</span> : '-'}
                           </td>
                         </tr>
                       );
@@ -295,19 +280,17 @@ const Scores = () => {
       )}
 
       {activeTab === 'summary' && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <div className="premium-card p-4 flex items-center justify-between z-10 relative">
-            <div className="w-full sm:w-64">
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">แสดงผลสำหรับชั้นเรียน</label>
-              <select value={sumClass} onChange={e => setSumClass(e.target.value)} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none text-sm font-bold bg-slate-50 text-indigo-900 focus:border-indigo-500 transition-all">
-                <option value="">สรุปยอดรวมทุกชั้นเรียน</option>
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="glass-card p-6 flex items-center justify-between z-10 relative">
+            <div className="w-full sm:w-auto flex items-center gap-4">
+              <label className="text-xs font-bold text-slate-500 uppercase">แสดงผลชั้นเรียน</label>
+              <select value={sumClass} onChange={e => setSumClass(e.target.value)} className="w-48 px-4 py-2.5 bg-white/60 border border-white rounded-2xl outline-none text-sm font-bold text-indigo-900 focus:bg-white transition-all cursor-pointer">
+                <option value="">สรุปทุกชั้นเรียน</option>
                 {db?.classes?.map(c => <option key={c} value={c}>ห้อง {c}</option>)}
               </select>
             </div>
           </div>
-          <div>
-            {renderSummary()}
-          </div>
+          <div>{renderSummary()}</div>
         </div>
       )}
     </div>

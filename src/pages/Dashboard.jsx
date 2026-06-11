@@ -1,309 +1,276 @@
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
+import { UsersThree, Student, Trash, WarningCircle, CheckSquare, Plus, UploadSimple, DownloadSimple, Info, UserCircle, TrendUp } from '@phosphor-icons/react';
 import Modal from '../components/Modal';
-import { ChalkboardTeacher, DownloadSimple, UploadSimple, Users, Clipboard, Notebook, Trash, Plus, ChartLineUp, Lightning } from '@phosphor-icons/react';
-
-const StatCard = ({ title, value, icon, colorClass, gradientClass }) => (
-  <div className={`premium-card p-5 relative overflow-hidden group`}>
-    <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-20 transition-transform duration-500 group-hover:scale-150 ${colorClass.split(' ')[0]}`}></div>
-    <div className="relative z-10 flex items-start justify-between">
-      <div>
-        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">{title}</p>
-        <h4 className="font-display font-bold text-3xl text-slate-800">{value}</h4>
-      </div>
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-lg ${gradientClass}`}>
-        {icon}
-      </div>
-    </div>
-  </div>
-);
 
 const Dashboard = () => {
   const { db, setDb } = useContext(AppContext);
   const { addToast } = useToast();
 
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
-  const [newClassName, setNewClassName] = useState('');
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [classToDelete, setClassToDelete] = useState(null);
+  const [classInput, setClassInput] = useState('');
+  const [classToDelete, setClassToDelete] = useState('');
 
-  let sumPAndL = 0;
-  let totalAttActions = 0;
-  
-  if (db?.attendance) {
-    for (const key in db.attendance) {
-      db.attendance[key].forEach(r => {
-        totalAttActions++;
-        if (r.status === 'present' || r.status === 'late') sumPAndL++;
-      });
-    }
-  }
-  const overallPct = totalAttActions > 0 ? Math.round((sumPAndL / totalAttActions) * 100) : 100;
-
-  const today = new Date().toISOString().split('T')[0];
-  const todayKeys = Object.keys(db?.attendance || {}).filter(k => k.startsWith(today));
-  
-  const now = new Date();
-  const upcomingHws = (db?.homework || []).filter(h => {
-    const due = new Date(h.due);
-    const diffDays = (due - now) / 864e5;
-    return diffDays >= -1 && diffDays <= 7;
-  }).sort((a, b) => a.due.localeCompare(b.due));
+  const [isRawModalOpen, setIsRawModalOpen] = useState(false);
+  const [rawJsonData, setRawJsonData] = useState('');
 
   const handleAddClass = () => {
-    const name = newClassName.trim();
-    if (!name) {
-      addToast("กรุณากรอกชื่อชั้นเรียนใหม่ เช่น ม.1/2", "error");
-      return;
-    }
-    if (db?.classes?.includes(name)) {
-      addToast("ชั้นเรียนนี้มีอยู่ในระบบแล้ว", "error");
-      return;
-    }
+    if (!classInput.trim()) return addToast("กรุณากรอกชื่อชั้นเรียน", "error");
+    if (db?.classes?.includes(classInput.trim())) return addToast("มีชั้นเรียนนี้อยู่แล้ว", "error");
+
     const newDb = { ...db };
     if (!newDb.classes) newDb.classes = [];
-    newDb.classes.push(name);
-    setDb(newDb);
-    setNewClassName('');
-    addToast(`เพิ่มห้องเรียน ${name} เรียบร้อยแล้ว`, "success");
-  };
+    newDb.classes.push(classInput.trim());
+    newDb.classes.sort();
 
-  const requestDeleteClass = (c) => {
-    setClassToDelete(c);
-    setIsConfirmOpen(true);
+    setDb(newDb);
+    setClassInput('');
+    setIsClassModalOpen(false);
+    addToast(`เพิ่มชั้นเรียน ${classInput} สำเร็จ`, "success");
   };
 
   const confirmDeleteClass = () => {
     if (!classToDelete) return;
-    const inUse = db?.students?.some(s => s.cls === classToDelete);
-    
     const newDb = { ...db };
     newDb.classes = newDb.classes.filter(c => c !== classToDelete);
-    if (inUse) {
-      newDb.students.forEach(s => {
-        if (s.cls === classToDelete) s.cls = "";
-      });
-    }
-
     setDb(newDb);
-    addToast("ลบชั้นเรียนเสร็จเรียบร้อย", "success");
+    addToast(`ลบชั้นเรียน ${classToDelete} สำเร็จ`, "info");
     setIsConfirmOpen(false);
-    setClassToDelete(null);
+    setClassToDelete('');
   };
 
-  const exportJSON = () => {
+  const getStudentCount = (cls) => {
+    return db?.students?.filter(s => s.cls === cls).length || 0;
+  };
+
+  const handleExportData = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
-    const dlAnchor = document.createElement('a');
-    dlAnchor.setAttribute("href", dataStr);
-    dlAnchor.setAttribute("download", `comgrade_backup_${today}.json`);
-    document.body.appendChild(dlAnchor);
-    dlAnchor.click();
-    dlAnchor.remove();
-    addToast("ดาวน์โหลดไฟล์สำรองเรียบร้อย", "success");
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", `comgrade_backup_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    addToast("ส่งออกข้อมูลสำรองเรียบร้อย", "success");
   };
 
-  const importJSON = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(event) {
-      try {
-        const imported = JSON.parse(event.target.result);
-        if (imported.classes && imported.students) {
-          setDb(imported);
-          addToast("ฟื้นฟูข้อมูลจากไฟล์สำรองสำเร็จ 🎉", "success");
-        } else {
-          addToast("ไฟล์ไม่ถูกต้อง หรือไม่ใช่ไฟล์ข้อมูลของระบบนี้", "error");
-        }
-      } catch (err) {
-        addToast("ไม่สามารถอ่านข้อมูลในไฟล์ได้", "error");
+  const handleImportData = () => {
+    try {
+      const importedDb = JSON.parse(rawJsonData);
+      if (importedDb && typeof importedDb === 'object') {
+        setDb(importedDb);
+        setIsRawModalOpen(false);
+        setRawJsonData('');
+        addToast("นำเข้าข้อมูลสำเร็จ", "success");
+      } else {
+        addToast("รูปแบบไฟล์ JSON ไม่ถูกต้อง", "error");
       }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
+    } catch (e) {
+      addToast("รูปแบบไฟล์ JSON ไม่ถูกต้อง", "error");
+    }
   };
 
-  const formatThaiDate = (dateStr) => {
-    if (!dateStr) return '-';
-    const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-    const d = new Date(dateStr);
-    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
-  };
+  const totalStudents = db?.students?.length || 0;
+  const totalClasses = db?.classes?.length || 0;
+  const totalCheckRecords = Object.keys(db?.attendance || {}).length;
 
   return (
-    <div className="space-y-8">
-      {/* Action Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 no-print bg-white/40 p-2 rounded-2xl backdrop-blur-md border border-white/60 shadow-sm">
-        <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 hide-scroll">
-          <button onClick={() => setIsClassModalOpen(true)} className="btn-premium whitespace-nowrap px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-bold rounded-xl text-sm flex items-center gap-2 shadow-indigo-500/30 shadow-lg">
-            <ChalkboardTeacher weight="duotone" className="text-lg" /> โครงสร้างชั้นเรียน
-          </button>
-          <button onClick={exportJSON} className="btn-premium whitespace-nowrap px-4 py-2.5 bg-white text-slate-700 font-bold rounded-xl text-sm flex items-center gap-2 border border-slate-200 shadow-sm hover:border-indigo-300 hover:text-indigo-600">
-            <DownloadSimple weight="bold" /> แบ็คอัปข้อมูล
-          </button>
-          <label className="btn-premium whitespace-nowrap px-4 py-2.5 bg-white text-slate-700 font-bold rounded-xl text-sm flex items-center gap-2 border border-slate-200 shadow-sm hover:border-emerald-400 hover:text-emerald-600 cursor-pointer">
-            <UploadSimple weight="bold" /> นำเข้าข้อมูล
-            <input type="file" accept=".json" onChange={importJSON} className="hidden" />
-          </label>
-        </div>
-      </div>
+    <div className="space-y-6">
       
-      {/* STAT CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard title="นักเรียนในระบบ" value={db?.students?.length || 0} icon={<Users weight="duotone" className="text-white" />} colorClass="bg-blue-500" gradientClass="bg-gradient-to-br from-blue-400 to-blue-600 shadow-blue-500/40" />
-        <StatCard title="จำนวนห้องเรียน" value={db?.classes?.length || 0} icon={<ChalkboardTeacher weight="duotone" className="text-white" />} colorClass="bg-indigo-500" gradientClass="bg-gradient-to-br from-indigo-400 to-indigo-600 shadow-indigo-500/40" />
-        <StatCard title="อัตราเข้าเรียนเฉลี่ย" value={`${overallPct}%`} icon={<ChartLineUp weight="duotone" className="text-white" />} colorClass="bg-emerald-500" gradientClass="bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-emerald-500/40" />
-        <StatCard title="งานและกิจกรรม" value={db?.homework?.length || 0} icon={<Notebook weight="duotone" className="text-white" />} colorClass="bg-amber-500" gradientClass="bg-gradient-to-br from-amber-400 to-amber-600 shadow-amber-500/40" />
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Today's Attendance Feed */}
-        <div className="premium-card p-6 flex flex-col h-[400px]">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                <Clipboard weight="duotone" className="text-2xl" />
-              </div>
-              <h3 className="font-display font-bold text-lg text-slate-800">การเช็คชื่อวันนี้</h3>
-            </div>
-            <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full">{formatThaiDate(today)}</span>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
-            {todayKeys.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                <Clipboard weight="duotone" className="text-5xl mb-3 text-slate-200" />
-                <p className="text-sm font-medium">ยังไม่มีรายการเช็คชื่อของวันนี้</p>
-              </div>
-            ) : (
-              todayKeys.map(key => {
-                const parts = key.split('_');
-                const room = parts[1];
-                const period = parts[2];
-                const records = db.attendance[key];
-                const c = { present: 0, absent: 0, late: 0, leave: 0 };
-                records.forEach(r => { if (c[r.status] !== undefined) c[r.status]++; });
-
-                return (
-                  <div key={key} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-white border shadow-sm flex items-center justify-center font-display font-bold text-indigo-900 text-xs">
-                        ม.{room}
-                      </div>
-                      <div>
-                        <span className="font-bold text-slate-800 text-sm block">คาบที่ {period}</span>
-                        <span className="text-xs text-slate-400 font-medium">เช็คชื่อแล้ว {records.length} คน</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 text-xs font-bold font-mono">
-                      <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg">มา {c.present}</span>
-                      <span className="px-2 py-1 bg-rose-100 text-rose-700 rounded-lg">ขาด {c.absent}</span>
-                      <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg">สาย {c.late}</span>
-                      <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-lg">ลา {c.leave}</span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+      {/* Overview Bento Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        {/* Upcoming Tasks Feed */}
-        <div className="premium-card p-6 flex flex-col h-[400px]">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500">
-                <Lightning weight="duotone" className="text-2xl" />
-              </div>
-              <h3 className="font-display font-bold text-lg text-slate-800">งานที่ใกล้กำหนดส่ง</h3>
+        {/* Welcome Card - Takes 2 cols on tablet */}
+        <div className="glass-card p-8 md:col-span-2 relative overflow-hidden flex flex-col justify-center">
+          <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-indigo-500/10 to-transparent"></div>
+          <div className="relative z-10">
+            <h1 className="font-display font-bold text-3xl md:text-4xl text-slate-800 mb-2">ยินดีต้อนรับกลับมา, คุณครู! 👋</h1>
+            <p className="text-slate-600 font-medium max-w-lg mb-8">จัดการชั้นเรียน เช็คชื่อ และตรวจสอบคะแนนกิจกรรมได้อย่างง่ายดายด้วยดีไซน์กระจกใส สบายตา</p>
+            
+            <div className="flex flex-wrap gap-4">
+              <button 
+                onClick={() => setIsClassModalOpen(true)}
+                className="px-5 py-2.5 rounded-xl text-sm font-bold btn-primary-glass flex items-center gap-2"
+              >
+                <Plus weight="bold" /> สร้างชั้นเรียนใหม่
+              </button>
+              <button 
+                onClick={() => setIsRawModalOpen(true)}
+                className="px-5 py-2.5 rounded-xl text-sm font-bold btn-glass flex items-center gap-2 text-indigo-600"
+              >
+                <UploadSimple weight="bold" /> นำเข้าข้อมูลสำรอง
+              </button>
             </div>
-            <span className="px-3 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded-full border border-amber-200">7 วันนี้</span>
+          </div>
+        </div>
+
+        {/* Total Students Mini Card */}
+        <div className="glass-card p-6 flex flex-col justify-between relative overflow-hidden group">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-gradient-to-br from-teal-400 to-emerald-400 rounded-full opacity-20 blur-xl group-hover:scale-150 transition-transform duration-700"></div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-600 shadow-inner">
+              <UsersThree weight="duotone" className="text-2xl" />
+            </div>
+            <span className="px-2.5 py-1 bg-white/50 border border-white rounded-lg text-xs font-bold text-slate-500">ทั้งหมด</span>
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">นักเรียนในระบบ</h3>
+            <div className="flex items-end gap-2">
+              <span className="font-display font-bold text-5xl text-slate-800 tracking-tighter">{totalStudents}</span>
+              <span className="font-bold text-slate-400 pb-1.5">คน</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* Classes List - Spans 3 cols */}
+        <div className="md:col-span-3 glass-card p-6 flex flex-col h-[500px]">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-display font-bold text-2xl text-slate-800 flex items-center gap-3">
+              <Student weight="duotone" className="text-indigo-500" /> ห้องเรียนของคุณ
+            </h2>
+            <div className="px-3 py-1 bg-indigo-50/50 border border-indigo-100 rounded-lg text-sm font-bold text-indigo-600">
+              {totalClasses} ห้อง
+            </div>
           </div>
           
-          <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
-            {upcomingHws.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                <Lightning weight="duotone" className="text-5xl mb-3 text-slate-200" />
-                <p className="text-sm font-medium">ไม่มีกิจกรรมส่งงานใดที่อยู่ใกล้กำหนด</p>
+          <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+            {db?.classes?.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 space-y-4">
+                <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center">
+                  <UserCircle weight="duotone" className="text-4xl text-slate-300" />
+                </div>
+                <p className="font-display font-bold text-lg text-slate-500">ยังไม่มีชั้นเรียน</p>
+                <p className="text-sm">สร้างชั้นเรียนเพื่อเริ่มต้นเพิ่มรายชื่อนักเรียนและเช็คชื่อ</p>
               </div>
             ) : (
-              upcomingHws.slice(0, 5).map(h => (
-                <div key={h.id} className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm hover:border-amber-300 hover:shadow-md transition-all flex items-center justify-between gap-3">
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="font-bold text-slate-800 text-sm truncate">{h.title}</span>
-                    <span className="text-xs text-slate-500 font-medium mt-0.5">ชั้น: <span className="text-indigo-600">{h.cls}</span> &bull; {h.type}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {db?.classes?.map(cls => (
+                  <div key={cls} className="p-5 rounded-2xl bg-white/40 border border-white/60 hover:bg-white/60 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)] group flex flex-col justify-between">
+                    <div className="flex justify-between items-start mb-6">
+                      <h3 className="font-display font-bold text-2xl text-slate-800">ชั้น {cls}</h3>
+                      <button 
+                        onClick={() => { setClassToDelete(cls); setIsConfirmOpen(true); }}
+                        className="w-8 h-8 rounded-full bg-slate-100 hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
+                        title="ลบชั้นเรียน"
+                      >
+                        <Trash weight="bold" />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex -space-x-2">
+                        {[1,2,3].map(i => (
+                          <div key={i} className="w-7 h-7 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-500">
+                            <Student weight="fill" />
+                          </div>
+                        ))}
+                      </div>
+                      <span className="text-xs font-bold text-slate-500 bg-white/50 px-2 py-1 rounded-md">
+                        {getStudentCount(cls)} คน
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end">
-                    <span className="px-2.5 py-1 bg-amber-100 text-amber-800 text-[10px] font-bold rounded-lg mb-1 whitespace-nowrap">
-                      ส่ง {formatThaiDate(h.due)}
-                    </span>
-                    <span className="text-[10px] font-bold text-slate-400">{h.maxScore} คะแนน</span>
-                  </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
+          </div>
+        </div>
+
+        {/* Side Panel for Status & System - Spans 1 col */}
+        <div className="glass-card p-6 flex flex-col gap-6">
+          <div>
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">ข้อมูลระบบ</h3>
+            
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/40 border border-white/60 shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 shadow-inner">
+                  <CheckSquare weight="duotone" className="text-xl" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-500">บันทึกการเช็คชื่อ</p>
+                  <p className="font-display font-bold text-xl text-slate-800">{totalCheckRecords}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/40 border border-white/60 shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-500 shadow-inner">
+                  <TrendUp weight="duotone" className="text-xl" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-500">การสำรองข้อมูล</p>
+                  <p className="font-bold text-sm text-emerald-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> อัปเดตล่าสุด</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-auto">
+            <button 
+              onClick={handleExportData}
+              className="w-full py-3.5 rounded-xl text-sm font-bold btn-glass flex items-center justify-center gap-2 text-slate-700"
+            >
+              <DownloadSimple weight="bold" /> ดาวน์โหลดข้อมูลสำรอง
+            </button>
+            <div className="mt-3 flex items-start gap-2 p-3 rounded-xl bg-sky-50/50 border border-sky-100 text-[10px] font-medium text-sky-700 leading-relaxed">
+              <Info weight="fill" className="text-sky-500 text-lg shrink-0" />
+              <p>ระบบบันทึกข้อมูลอัตโนมัติบน Cloud แนะนำให้ดาวน์โหลดไฟล์สำรองเก็บไว้สัปดาห์ละ 1 ครั้ง</p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Class Manager Modal */}
-      <Modal isOpen={isClassModalOpen} onClose={() => setIsClassModalOpen(false)} title="🏫 โครงสร้างชั้นเรียนระบบ">
-        <div className="flex gap-2 mb-5 p-1 bg-slate-50 rounded-2xl border">
+      {/* Modals updated to use glassmorphism conceptually (assuming Modal component handles its own overlay) */}
+      <Modal isOpen={isClassModalOpen} onClose={() => setIsClassModalOpen(false)} title="➕ เพิ่มชั้นเรียนใหม่">
+        <div className="p-2 space-y-4">
+          <p className="text-sm font-medium text-slate-600">โปรดพิมพ์ชื่อห้องเรียนในรูปแบบที่ต้องการ เช่น ม.1/1 หรือ ป.6/2</p>
           <input 
             type="text" 
-            placeholder="เพิ่มห้องเรียนใหม่ เช่น ม.1/2" 
-            value={newClassName}
-            onChange={e => setNewClassName(e.target.value)}
-            className="flex-1 px-4 py-2 outline-none bg-transparent font-medium"
+            className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all font-bold text-slate-800 bg-slate-50" 
+            placeholder="เช่น ป.1/1" 
+            value={classInput}
+            onChange={e => setClassInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleAddClass()}
+            autoFocus
           />
-          <button onClick={handleAddClass} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-1 active:scale-95">
-            <Plus weight="bold" /> เพิ่มห้อง
+          <button onClick={handleAddClass} className="w-full py-3.5 btn-primary-glass rounded-xl font-bold text-sm">
+            ยืนยันการเพิ่มชั้นเรียน
           </button>
-        </div>
-        
-        <div className="rounded-2xl border border-slate-100 divide-y max-h-64 overflow-y-auto custom-scrollbar">
-          {!db?.classes || db.classes.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-sm font-medium">ยังไม่มีชั้นเรียนในระบบ</div>
-          ) : (
-            [...db.classes].sort((a, b) => a.localeCompare(b, 'th', { numeric: true })).map(c => {
-              const studentCount = db?.students?.filter(s => s.cls === c).length || 0;
-              return (
-                <div key={c} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors group">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-700 font-bold text-xs">{c.substring(0,2)}</div>
-                    <div>
-                      <span className="font-bold text-slate-800 text-sm block">{c}</span>
-                      <span className="text-xs text-slate-400 font-medium">นักเรียน {studentCount} คน</span>
-                    </div>
-                  </div>
-                  <button onClick={() => requestDeleteClass(c)} className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 hover:bg-rose-500 hover:text-white">
-                    <Trash weight="fill" />
-                  </button>
-                </div>
-              );
-            })
-          )}
         </div>
       </Modal>
 
-      {/* Confirm Delete Modal */}
-      <Modal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} title="⚠️ ยืนยันการลบห้องเรียน">
+      <Modal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} title="⚠️ ลบชั้นเรียน">
         <div className="space-y-5">
-          <p className="text-sm text-slate-600 leading-relaxed font-medium">
-            คุณต้องการลบห้องเรียน <strong className="text-rose-600 text-base">"{classToDelete}"</strong> ออกจากระบบใช่หรือไม่?
-            <br />
-            {db?.students?.some(s => s.cls === classToDelete) && <span className="block mt-3 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs">⚠️ คำเตือน! มีนักเรียนอยู่ในห้องนี้ ข้อมูลนักเรียนจะไม่หายไป แต่ช่อง 'ชั้นเรียน' ของเด็กๆ จะกลายเป็นค่าว่างครับ</span>}
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => setIsConfirmOpen(false)} className="py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors">
-              ยกเลิก
-            </button>
-            <button onClick={confirmDeleteClass} className="py-3 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl shadow-md transition-all active:scale-95">
-              ยืนยันการลบ
-            </button>
+          <div className="p-4 bg-rose-50/50 rounded-2xl border border-rose-100 text-center">
+            <WarningCircle weight="duotone" className="text-5xl text-rose-400 mx-auto mb-2" />
+            <p className="text-sm text-slate-700 font-medium">คุณต้องการลบชั้นเรียน <strong className="text-rose-600 text-base">"{classToDelete}"</strong> ใช่หรือไม่?</p>
+            <p className="text-xs text-rose-500 mt-2 font-semibold">ข้อมูลนักเรียนและการเช็คชื่อของห้องนี้จะหายไปทั้งหมด</p>
           </div>
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <button onClick={() => setIsConfirmOpen(false)} className="py-3 btn-glass rounded-xl font-bold text-slate-700">ยกเลิก</button>
+            <button onClick={confirmDeleteClass} className="py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl shadow-md font-bold transition-all active:scale-95">ยืนยันการลบ</button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={isRawModalOpen} onClose={() => setIsRawModalOpen(false)} title="📥 นำเข้าข้อมูล (Import)">
+        <div className="p-2 space-y-4">
+          <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl flex items-start gap-2">
+            <WarningCircle weight="fill" className="text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-xs font-semibold text-amber-700">คำเตือน: การนำเข้าข้อมูลจะเขียนทับข้อมูลเดิมทั้งหมด โปรดตรวจสอบให้แน่ใจ</p>
+          </div>
+          <textarea 
+            className="w-full px-4 py-4 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-xs font-mono bg-slate-50 h-64 resize-none custom-scrollbar" 
+            placeholder="วางโค้ด JSON ที่ได้จากการส่งออกข้อมูลที่นี่..."
+            value={rawJsonData}
+            onChange={e => setRawJsonData(e.target.value)}
+          ></textarea>
+          <button onClick={handleImportData} className="w-full py-3.5 btn-primary-glass rounded-xl font-bold text-sm">
+            นำเข้าและเขียนทับข้อมูล
+          </button>
         </div>
       </Modal>
     </div>

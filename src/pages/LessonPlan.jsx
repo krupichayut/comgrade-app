@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { BookOpen, Plus, Trash, FloppyDisk, PencilSimple, WarningCircle } from '@phosphor-icons/react';
+import { BookOpen, Plus, Trash, FloppyDisk, PencilSimple, WarningCircle, GraduationCap } from '@phosphor-icons/react';
 
 const LessonPlan = () => {
   const { db, setDb } = useContext(AppContext);
@@ -19,8 +19,6 @@ const LessonPlan = () => {
       setPlans([]);
       return;
     }
-    
-    // Load plans for the selected class
     const classPlans = db?.lessonPlans?.[lpClass] || [];
     setPlans(JSON.parse(JSON.stringify(classPlans)));
     setEditingId(null);
@@ -42,7 +40,7 @@ const LessonPlan = () => {
 
     newDb.lessonPlans[lpClass].push(newRow);
     setDb(newDb);
-    addToast("เพิ่มแถวใหม่เรียบร้อยแล้ว", "success");
+    addToast("เพิ่มข้อมูลแผนการสอนเรียบร้อย", "success");
   };
 
   const handleEditClick = (plan) => {
@@ -79,173 +77,131 @@ const LessonPlan = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header Card */}
-      <div className="premium-card p-4 flex flex-col lg:flex-row gap-4 items-center justify-between z-10 relative">
-        <div className="flex items-center gap-3 w-full lg:w-auto">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-sky-100 to-blue-100 text-sky-600 flex items-center justify-center shadow-inner">
-            <BookOpen weight="duotone" className="text-2xl" />
+    <div className="space-y-8">
+      {/* Header Glass Card */}
+      <div className="glass-card p-6 flex flex-col md:flex-row gap-6 items-center justify-between z-10 relative">
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-500 text-white flex items-center justify-center shadow-lg shadow-sky-500/30">
+            <BookOpen weight="duotone" className="text-3xl" />
           </div>
           <div>
-            <h3 className="font-display font-bold text-xl text-slate-800">โครงสร้างแผนการสอน</h3>
-            <p className="text-xs text-slate-500 font-medium">จัดการตารางเรียนและเนื้อหาแยกตามรายชั้นเรียน</p>
+            <h3 className="font-display font-bold text-2xl text-slate-800">Timeline แผนการสอน</h3>
+            <p className="text-sm text-slate-500 font-medium">จัดการเนื้อหาการสอนรายสัปดาห์</p>
           </div>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end">
-          <div className="w-full sm:w-auto">
-            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">เลือกชั้นเรียน</label>
+        <div className="flex flex-wrap items-center gap-4 w-full md:w-auto justify-end">
+          <div className="w-full sm:w-auto flex items-center gap-3 bg-white/50 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/60 shadow-sm">
+            <GraduationCap weight="fill" className="text-sky-500 text-xl shrink-0" />
             <select 
               value={lpClass} 
               onChange={e => setLpClass(e.target.value)} 
-              className="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-sm bg-slate-50 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 transition-all font-bold text-slate-700"
+              className="w-full sm:w-32 bg-transparent outline-none text-sm font-bold text-slate-700 cursor-pointer"
             >
-              {db?.classes?.length === 0 && <option value="">ไม่มีชั้นเรียน</option>}
+              {db?.classes?.length === 0 && <option value="">ไม่มีห้องเรียน</option>}
               {db?.classes?.map(c => <option key={c} value={c}>ห้อง {c}</option>)}
             </select>
           </div>
           
-          <div className="self-end">
-            <button 
-              onClick={handleAddRow}
-              disabled={!lpClass}
-              className="w-full sm:w-auto px-5 py-2.5 bg-sky-500 hover:bg-sky-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-sky-500/30 transition-all btn-premium"
-            >
-              <Plus weight="bold" /> เพิ่มสัปดาห์
-            </button>
-          </div>
+          <button 
+            onClick={handleAddRow}
+            disabled={!lpClass}
+            className="w-full sm:w-auto px-6 py-3.5 btn-primary-glass disabled:opacity-50 disabled:cursor-not-allowed font-bold rounded-2xl text-sm flex items-center justify-center gap-2"
+          >
+            <Plus weight="bold" /> เพิ่มสัปดาห์เรียน
+          </button>
         </div>
       </div>
 
-      {/* Main Table Card */}
-      <div className="premium-card overflow-hidden">
-        <div className="overflow-x-auto custom-scrollbar min-h-[400px]">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr>
-                <th className="py-4 px-5 w-32">สัปดาห์ / วันที่</th>
-                <th className="py-4 px-4 w-64">หัวข้อ / หน่วยการเรียนรู้</th>
-                <th className="py-4 px-4">รายละเอียด / ตัวชี้วัด</th>
-                <th className="py-4 px-4 w-28 text-center text-amber-600">คะแนนเก็บ</th>
-                <th className="py-4 px-5 text-center w-28 no-print">จัดการ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {!lpClass ? (
-                <tr>
-                  <td colSpan="5" className="py-16 text-center text-slate-400 bg-slate-50/50">
-                    <WarningCircle weight="duotone" className="text-5xl mx-auto mb-3 text-slate-300" />
-                    <p className="font-display font-medium text-lg">โปรดเพิ่มชั้นเรียนในเมนู 'ภาพรวม' ก่อน</p>
-                  </td>
-                </tr>
-              ) : plans.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="py-16 text-center text-slate-400 bg-slate-50/50">
-                    <BookOpen weight="duotone" className="text-6xl mx-auto mb-3 text-slate-300" />
-                    <p className="font-display font-medium text-lg">ยังไม่มีข้อมูลแผนการสอนสำหรับห้อง {lpClass}</p>
-                    <p className="text-xs mt-1">คลิกปุ่ม "+ เพิ่มสัปดาห์" ด้านบนเพื่อเริ่มสร้างตาราง</p>
-                  </td>
-                </tr>
-              ) : (
-                plans.map(plan => {
-                  const isEditing = editingId === plan.id;
+      {/* Timeline Layout */}
+      <div className="glass-card p-8 min-h-[500px] relative">
+        {!lpClass ? (
+          <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 py-20">
+            <WarningCircle weight="duotone" className="text-6xl mx-auto mb-4 text-slate-300" />
+            <p className="font-display font-bold text-xl text-slate-500">โปรดเลือกชั้นเรียนก่อน</p>
+          </div>
+        ) : plans.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 py-20">
+            <BookOpen weight="duotone" className="text-6xl mx-auto mb-4 text-slate-300" />
+            <p className="font-display font-bold text-xl text-slate-500">ยังไม่มีแผนการสอน</p>
+            <p className="text-sm mt-2 font-medium">คลิก "เพิ่มสัปดาห์เรียน" เพื่อเริ่มสร้าง Timeline</p>
+          </div>
+        ) : (
+          <div className="relative pl-4 md:pl-10 space-y-8">
+            {/* The vertical timeline line */}
+            <div className="absolute left-6 md:left-[2.85rem] top-4 bottom-4 w-1 bg-gradient-to-b from-sky-400 to-indigo-500 opacity-20 rounded-full"></div>
+            
+            {plans.map((plan, index) => {
+              const isEditing = editingId === plan.id;
+              
+              return (
+                <div key={plan.id} className="relative group">
+                  {/* Timeline Dot */}
+                  <div className="absolute -left-6 md:-left-12 top-6 w-5 h-5 rounded-full bg-white border-4 border-sky-400 shadow-[0_0_0_4px_rgba(56,189,248,0.2)] z-10 group-hover:scale-125 transition-transform duration-300"></div>
                   
-                  return (
-                    <tr key={plan.id} className={`${isEditing ? 'bg-sky-50/50' : 'hover:bg-slate-50'} transition-colors group`}>
-                      {/* Week Column */}
-                      <td className="py-3 px-5 align-top">
-                        {isEditing ? (
-                          <input 
-                            type="text" 
-                            className="w-full px-3 py-2 text-sm border border-sky-300 rounded-lg outline-none focus:ring-2 focus:ring-sky-100 bg-white font-bold text-slate-700"
-                            value={editForm.week}
-                            onChange={e => setEditForm({...editForm, week: e.target.value})}
-                            placeholder="สัปดาห์ที่ 1"
-                          />
-                        ) : (
-                          <span className="font-bold text-sky-700">{plan.week}</span>
-                        )}
-                      </td>
-                      
-                      {/* Topic Column */}
-                      <td className="py-3 px-4 align-top">
-                        {isEditing ? (
-                          <input 
-                            type="text" 
-                            className="w-full px-3 py-2 text-sm border border-sky-300 rounded-lg outline-none focus:ring-2 focus:ring-sky-100 bg-white font-bold text-slate-800"
-                            value={editForm.topic}
-                            onChange={e => setEditForm({...editForm, topic: e.target.value})}
-                            placeholder="พิมพ์ชื่อหน่วย..."
-                          />
-                        ) : (
-                          <span className="font-bold text-slate-800">{plan.topic}</span>
-                        )}
-                      </td>
-                      
-                      {/* Detail Column */}
-                      <td className="py-3 px-4 align-top">
-                        {isEditing ? (
-                          <textarea 
-                            className="w-full px-3 py-2 text-sm border border-sky-300 rounded-lg outline-none focus:ring-2 focus:ring-sky-100 bg-white text-slate-600 resize-y min-h-[60px] custom-scrollbar"
-                            value={editForm.detail}
-                            onChange={e => setEditForm({...editForm, detail: e.target.value})}
-                            placeholder="รายละเอียดเนื้อหา..."
-                          />
-                        ) : (
-                          <div className="text-slate-600 whitespace-pre-wrap leading-relaxed">{plan.detail || <span className="text-slate-300 italic">ไม่มีรายละเอียด</span>}</div>
-                        )}
-                      </td>
-                      
-                      {/* Score Column */}
-                      <td className="py-3 px-4 align-top text-center">
-                        {isEditing ? (
-                          <input 
-                            type="number" 
-                            className="w-20 mx-auto px-2 py-2 text-sm border border-sky-300 rounded-lg outline-none focus:ring-2 focus:ring-sky-100 bg-white font-bold text-amber-600 text-center"
-                            value={editForm.score}
-                            onChange={e => setEditForm({...editForm, score: e.target.value})}
-                            placeholder="0"
-                          />
-                        ) : (
-                          <span className="font-bold text-amber-500 bg-amber-50 px-3 py-1 rounded-lg border border-amber-100">{plan.score}</span>
-                        )}
-                      </td>
-                      
-                      {/* Action Column */}
-                      <td className="py-3 px-5 align-top text-center no-print">
-                        {isEditing ? (
-                          <button 
-                            onClick={handleSaveEdit}
-                            className="w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm transition-colors"
-                          >
+                  {/* Content Card */}
+                  <div className={`ml-4 md:ml-8 glass-panel p-6 border transition-all duration-300 ${isEditing ? 'border-sky-300 shadow-lg shadow-sky-500/10' : 'border-white/60 hover:border-white hover:shadow-lg'}`}>
+                    
+                    {isEditing ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">สัปดาห์ / วันที่</label>
+                            <input type="text" className="w-full px-4 py-2.5 text-sm rounded-xl border-none outline-none bg-white/80 focus:bg-white focus:ring-2 focus:ring-sky-200 font-bold text-sky-700 shadow-inner" value={editForm.week} onChange={e => setEditForm({...editForm, week: e.target.value})} placeholder="สัปดาห์ที่ 1" />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">หัวข้อการเรียนรู้</label>
+                            <input type="text" className="w-full px-4 py-2.5 text-sm rounded-xl border-none outline-none bg-white/80 focus:bg-white focus:ring-2 focus:ring-sky-200 font-bold text-slate-800 shadow-inner" value={editForm.topic} onChange={e => setEditForm({...editForm, topic: e.target.value})} placeholder="พิมพ์ชื่อหน่วย..." />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">รายละเอียดเนื้อหา / ตัวชี้วัด</label>
+                          <textarea className="w-full px-4 py-3 text-sm rounded-xl border-none outline-none bg-white/80 focus:bg-white focus:ring-2 focus:ring-sky-200 text-slate-600 resize-y min-h-[80px] custom-scrollbar shadow-inner" value={editForm.detail} onChange={e => setEditForm({...editForm, detail: e.target.value})} placeholder="รายละเอียดเนื้อหา..." />
+                        </div>
+                        <div className="flex items-end justify-between gap-4">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">คะแนนเก็บ (ถ้ามี)</label>
+                            <input type="number" className="w-32 px-4 py-2.5 text-sm rounded-xl border-none outline-none bg-white/80 focus:bg-white focus:ring-2 focus:ring-sky-200 font-bold text-amber-600 shadow-inner" value={editForm.score} onChange={e => setEditForm({...editForm, score: e.target.value})} placeholder="0" />
+                          </div>
+                          <button onClick={handleSaveEdit} className="px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-md shadow-sky-500/20 transition-all active:scale-95">
                             <FloppyDisk weight="fill" /> บันทึก
                           </button>
-                        ) : (
-                          <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button 
-                              onClick={() => handleEditClick(plan)}
-                              className="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:border-sky-300 hover:text-sky-600 text-slate-500 flex items-center justify-center transition-all shadow-sm"
-                              title="แก้ไข"
-                            >
-                              <PencilSimple weight="bold" />
-                            </button>
-                            <button 
-                              onClick={() => handleDelete(plan.id)}
-                              className="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:border-rose-300 hover:text-rose-600 hover:bg-rose-50 text-slate-500 flex items-center justify-center transition-all shadow-sm"
-                              title="ลบ"
-                            >
-                              <Trash weight="bold" />
-                            </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col md:flex-row gap-6">
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-center gap-3">
+                            <span className="px-3 py-1 bg-gradient-to-r from-sky-500 to-blue-500 text-white text-xs font-bold rounded-lg shadow-sm">
+                              {plan.week}
+                            </span>
+                            {plan.score > 0 && (
+                              <span className="px-2.5 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-lg border border-amber-200 flex items-center gap-1">
+                                🎯 {plan.score} คะแนน
+                              </span>
+                            )}
                           </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                          <h4 className="font-display font-bold text-xl text-slate-800 leading-snug">{plan.topic}</h4>
+                          <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{plan.detail || <span className="text-slate-400 italic">ไม่มีรายละเอียดเนื้อหา</span>}</p>
+                        </div>
+                        
+                        <div className="flex md:flex-col gap-2 shrink-0 md:opacity-0 group-hover:opacity-100 transition-opacity justify-end md:justify-start">
+                          <button onClick={() => handleEditClick(plan)} className="w-10 h-10 rounded-xl btn-glass flex items-center justify-center text-slate-500 hover:text-sky-600">
+                            <PencilSimple weight="bold" />
+                          </button>
+                          <button onClick={() => handleDelete(plan.id)} className="w-10 h-10 rounded-xl btn-glass flex items-center justify-center text-slate-500 hover:text-rose-600">
+                            <Trash weight="bold" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
