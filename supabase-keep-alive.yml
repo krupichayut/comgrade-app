@@ -1,0 +1,18 @@
+name: Supabase Keep Alive
+
+on:
+  schedule:
+    # รันอัตโนมัติทุกๆ 3 วัน เวลาเที่ยงคืน (00:00 UTC)
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # อนุญาตให้กดรันเองได้ด้วย
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Supabase to keep it awake
+        # ใช้ curl ยิงไปที่ Supabase REST API (ไม่ต้องใช้ Key ก็ถือเป็น Activity)
+        # โดยยิงไปที่ URL ฐานข้อมูลของคุณครู
+        run: |
+          curl -I -s "https://tvrkteqmzocoruhekubv.supabase.co/rest/v1/"
+          echo "Supabase Pinged Successfully!"
