@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
-import { House, CheckSquare, Users, ChartBarHorizontal, Notebook, FileText, GraduationCap, List, BookOpen, X } from '@phosphor-icons/react';
+import { House, CheckSquare, Users, ChartBarHorizontal, Notebook, FileText, GraduationCap, List, BookOpen, X, Gear } from '@phosphor-icons/react';
 import { AppProvider, AppContext } from './context/AppContext';
 
 import Dashboard from './pages/Dashboard';
@@ -10,6 +10,7 @@ import Homework from './pages/Homework';
 import Scores from './pages/Scores';
 import Report from './pages/Report';
 import LessonPlan from './pages/LessonPlan';
+import Settings from './pages/Settings';
 
 const SidebarItem = ({ to, icon, label, onClick }) => (
   <NavLink
@@ -41,6 +42,7 @@ const Layout = ({ children }) => {
       case '/scores': return 'คะแนนกิจกรรม (Scores)';
       case '/homework': return 'มอบหมายงาน (Homework)';
       case '/report': return 'รายงานผล (Report)';
+      case '/settings': return 'ตั้งค่าระบบ (Settings)';
       default: return 'ระบบเช็คชื่อวิชาคอมพิวเตอร์';
     }
   };
@@ -80,6 +82,9 @@ const Layout = ({ children }) => {
           <SidebarItem to="/scores" icon={<ChartBarHorizontal weight="duotone" />} label="คะแนนกิจกรรม" onClick={() => setIsMobileMenuOpen(false)} />
           <SidebarItem to="/homework" icon={<Notebook weight="duotone" />} label="มอบหมายงาน" onClick={() => setIsMobileMenuOpen(false)} />
           <SidebarItem to="/report" icon={<FileText weight="duotone" />} label="รายงานผล" onClick={() => setIsMobileMenuOpen(false)} />
+
+          <p className="px-4 text-[10px] font-bold text-indigo-400/80 uppercase tracking-widest mb-3 mt-8">ระบบ</p>
+          <SidebarItem to="/settings" icon={<Gear weight="duotone" />} label="ตั้งค่าฐานข้อมูล" onClick={() => setIsMobileMenuOpen(false)} />
         </div>
         
         <div className="p-6">
@@ -142,6 +147,7 @@ const App = () => {
             <Route path="/scores" element={<Scores />} />
             <Route path="/homework" element={<Homework />} />
             <Route path="/report" element={<Report />} />
+            <Route path="/settings" element={<Settings />} />
           </Routes>
         </Layout>
       </BrowserRouter>
