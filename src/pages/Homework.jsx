@@ -37,6 +37,7 @@ const Homework = () => {
     if (!hwForm.title.trim()) return addToast("กรุณากรอกชื่อใบงาน/กิจกรรม", "error");
 
     const newDb = { ...db };
+    newDb.homework = [...(newDb.homework || [])]; // Clone array
     const maxScore = parseFloat(hwForm.maxScore) || 0;
 
     if (hwForm.id) {

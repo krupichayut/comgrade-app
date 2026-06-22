@@ -57,13 +57,11 @@ const Students = () => {
   };
 
   const handleSaveStudent = () => {
-    if (!studentForm.name.trim()) {
-      addToast("กรุณากรอกชื่อนักเรียน", "error");
-      return;
-    }
+    if (!studentForm.name || !studentForm.no) return addToast("กรุณากรอกข้อมูลให้ครบถ้วน", "error");
 
     const newDb = { ...db };
-    const no = parseInt(studentForm.no) || 0;
+    newDb.students = [...(newDb.students || [])]; // Clone array to trigger React render properly
+    const no = parseInt(studentForm.no);
 
     if (studentForm.id) {
       const idx = newDb.students.findIndex(s => s.id === studentForm.id);
@@ -72,13 +70,9 @@ const Students = () => {
       }
       addToast("อัปเดตข้อมูลนักเรียนเรียบร้อยแล้ว", "success");
     } else {
-      newDb.students.push({
-        id: newDb.idCounter++,
-        name: studentForm.name,
-        no,
-        cls: studentForm.cls,
-        gender: studentForm.gender
-      });
+      if (!newDb.idCounter) newDb.idCounter = 1;
+      const newStudent = { ...studentForm, id: newDb.idCounter++, no };
+      newDb.students.push(newStudent);
       addToast("เพิ่มนักเรียนใหม่เรียบร้อยแล้ว", "success");
     }
 

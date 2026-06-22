@@ -8,26 +8,17 @@ const LessonPlan = () => {
   const { addToast } = useToast();
 
   const [lpClass, setLpClass] = useState(db?.classes?.[0] || '');
-  const [plans, setPlans] = useState([]);
   
   // Track which row is being edited
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ week: '', topic: '', detail: '', score: '' });
 
-  useEffect(() => {
-    if (!lpClass) {
-      setPlans([]);
-      return;
-    }
-    const classPlans = db?.lessonPlans?.[lpClass] || [];
-    setPlans(JSON.parse(JSON.stringify(classPlans)));
-    setEditingId(null);
-  }, [lpClass, db?.lessonPlans]);
+  const plans = db?.lessonPlans?.[lpClass] || [];
 
   const handleAddRow = () => {
     const newDb = { ...db };
-    if (!newDb.lessonPlans) newDb.lessonPlans = {};
-    if (!newDb.lessonPlans[lpClass]) newDb.lessonPlans[lpClass] = [];
+    newDb.lessonPlans = { ...(newDb.lessonPlans || {}) };
+    newDb.lessonPlans[lpClass] = [...(newDb.lessonPlans[lpClass] || [])];
     if (!newDb.lpCounter) newDb.lpCounter = 1;
 
     const newRow = {
@@ -50,8 +41,10 @@ const LessonPlan = () => {
 
   const handleSaveEdit = () => {
     const newDb = { ...db };
-    const classPlans = newDb.lessonPlans[lpClass] || [];
+    newDb.lessonPlans = { ...(newDb.lessonPlans || {}) };
+    newDb.lessonPlans[lpClass] = [...(newDb.lessonPlans[lpClass] || [])];
     
+    const classPlans = newDb.lessonPlans[lpClass];
     const idx = classPlans.findIndex(p => p.id === editingId);
     if (idx !== -1) {
       classPlans[idx] = { 
@@ -69,7 +62,9 @@ const LessonPlan = () => {
     if (!window.confirm("คุณต้องการลบข้อมูลสัปดาห์นี้ใช่หรือไม่?")) return;
     
     const newDb = { ...db };
-    if (newDb.lessonPlans && newDb.lessonPlans[lpClass]) {
+    newDb.lessonPlans = { ...(newDb.lessonPlans || {}) };
+    
+    if (newDb.lessonPlans[lpClass]) {
       newDb.lessonPlans[lpClass] = newDb.lessonPlans[lpClass].filter(p => p.id !== id);
       setDb(newDb);
       addToast("ลบข้อมูลเรียบร้อยแล้ว", "info");
